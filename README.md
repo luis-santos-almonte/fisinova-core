@@ -1,32 +1,52 @@
-# Fisinova Core API
+# Fisinova Core
 
-Este es un sistema de backend en Laravel para gestionar citas, procedimientos, autorizaciones, pagos y más, diseñado inicialmente para una unidad de Medicina Física y Rehabilitación.
+Sistema de gestión para Unidades de Medicina Física y Rehabilitación, desarrollado con Laravel, PostgreSQL y Docker.
 
 ## 🚀 Requisitos
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- [Git](https://git-scm.com/)
+-   Docker
+-   Docker Compose
+-   Git
+-   Bash (Linux, macOS o WSL en Windows)
 
-> **Nota:** No necesitas instalar PHP, Composer o Postgres localmente.
+## 🛠 Instalación rápida
 
----
-
-## ⚙️ Instalación
+Clona el repositorio y ejecuta el script de instalación:
 
 ```bash
-# Clona el repositorio
 git clone https://github.com/tu-usuario/fisinova-core.git
 cd fisinova-core
+chmod +x setup.sh
+./setup.sh
+```
 
-# Copia las variables de entorno
-cp .env.example .env
+Este script:
 
-# Construye y levanta los contenedores
-docker compose up -d --build
+1. Copia el archivo .env si no existe.
+2. Construye y levanta los contenedores.
+3. Instala dependencias con Composer.
+4. Ejecuta migraciones de base de datos.
+5. Detecta el puerto real para acceso web.
 
-# Instala las dependencias y genera la clave de aplicación
+## ⚙️ Servicios incluidos
+
+    Laravel (PHP 8.3)
+
+    PostgreSQL 15
+
+    Nginx
+
+    Composer
+
+## 🧪 Comandos útiles
+
+```bash
+# Acceder al contenedor de la app
 docker exec -it fisinova-core bash
-composer install
-php artisan key:generate
-php artisan migrate
-exit
+
+# Ver logs
+docker compose logs -f
+
+# Detener los contenedores
+docker compose down
+```
