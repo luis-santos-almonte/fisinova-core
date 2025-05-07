@@ -4,9 +4,10 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 use Symfony\Component\HttpFoundation\Response;
 
-class CustomMiddleware
+class HandleApiRequests
 {
     /**
      * Handle an incoming request.
@@ -15,6 +16,6 @@ class CustomMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        return $next($request);
+        return (new EnsureFrontendRequestsAreStateful)->handle($request, $next);
     }
 }

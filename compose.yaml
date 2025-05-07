@@ -34,7 +34,7 @@ services:
     image: postgres:15
     container_name: pg-db
     environment:
-      POSTGRES_DB: laravel
+      POSTGRES_DB: fisinova_db
       POSTGRES_USER: laravel
       POSTGRES_PASSWORD: secret
     volumes:
