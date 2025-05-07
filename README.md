@@ -16,8 +16,7 @@ Clona el repositorio y ejecuta el script de instalación:
 ```bash
 git clone https://github.com/tu-usuario/fisinova-core.git
 cd fisinova-core
-chmod +x setup.sh
-./setup.sh
+./setup.bat
 ```
 
 Este script:
