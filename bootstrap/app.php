@@ -13,7 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        ApiResponseFormatter::class;
+        $middleware->append(ApiResponseFormatter::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

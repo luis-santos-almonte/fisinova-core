@@ -9,11 +9,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Patient extends Model
 {
     use HasFactory;
-    use HasUuids;
 
-    public $incrementing = false;
-    protected $primaryKey = 'id';
-    protected $keyType = 'string';
+    public $incrementing = true;
     public $timestamps = true;
     protected $table = 'patients';
 
