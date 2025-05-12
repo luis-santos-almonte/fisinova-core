@@ -12,28 +12,31 @@ class ApiResponseFormatter
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \Closure  $next
+     * @return mixed
      */
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next): mixed
     {
-
         $response = $next($request);
 
-        if (! $response instanceof JsonResponse) {
-            return $response;
+        if ($response instanceof JsonResponse) {
+            $originalContent = $response->getData(true);
+
+            if (
+                array_key_exists('data', $originalContent) &&
+                array_key_exists('error', $originalContent)
+            ) {
+                return $response;
+            }
+            $standardContent = [
+                'data' => $originalContent,
+                'error' => null,
+            ];
+
+            $response->setData($standardContent);
         }
 
-        $originalData = $response->getData(true);
-
-        $isSuccess = $response->getStatusCode() < 400;
-
-        $formatted = [
-            'success' => $isSuccess,
-            'status' => $response->getStatusCode(),
-            'data' => $isSuccess ? $originalData : null,
-            'error' => !$isSuccess ? $originalData : null,
-        ];
-
-        return response()->json($formatted, $response->getStatusCode());
+        return $response;
     }
 }

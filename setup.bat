@@ -32,6 +32,12 @@ docker exec -it fisinova-core composer install
 docker exec -it fisinova-core php artisan key:generate
 docker exec -it fisinova-core php artisan migrate
 
+:: Realizar optimizaciones de Laravel (caching)
+echo ⚡ Optimizando Laravel...
+docker exec -it fisinova-core php artisan config:cache
+docker exec -it fisinova-core php artisan route:cache
+docker exec -it fisinova-core php artisan view:cache
+
 :: Obtener el puerto mapeado del contenedor nginx-web
 for /f "tokens=* delims=" %%p in ('docker inspect --format="{{(index (index .NetworkSettings.Ports \"80/tcp\") 0).HostPort}}" nginx-web 2^>nul') do (
     set PORT=%%p

@@ -10,38 +10,38 @@ class PatientController extends Controller
 {
     public function index()
     {
-        try {
-            $patients = Patient::all();
-            return response()->json($patients, 200);
-        } catch (\Exception $e) {
-            return response()->json(['message' => 'Failed to fetch patients'], 500);
-        }
+        return response()->json(Patient::all());
     }
 
     public function store(StorePatientRequest $request)
     {
-        try {
-            $patient = Patient::create($request->validated());
+        $patient = Patient::create($request->validated());
 
-            return response()->json(['message' => 'Paciente creado!', 'data' => $patient], 201);
-        } catch (\Exception $e) {
-            return response()->json(['message' => 'Failed to create patient', 'error' => $e], 500);
+        if (!$patient) {
+            throw new \Exception('Error al crear el paciente.');
         }
+
+        return response()->json([
+            'message' => 'Paciente creado!',
+            'data' => $patient
+        ]);
     }
 
     public function show(Patient $patient)
     {
-        try {
-            $patient = Patient::find($patient->id);
-            return response()->json($patient, 200);
-        } catch (\Exception $e) {
-            return response()->json(['message' => 'Failed to fetch patient'], 500);
+        if (!$patient) {
+            throw new \Exception('Paciente no encontrado.');
         }
+        return response()->json($patient);
     }
 
     public function update(UpdatePatientRequest $request, Patient $patient)
     {
         $patient->update($request->validated());
-        return response()->json($patient, 200);
+
+        return response()->json([
+            'message' => 'Paciente actualizado!',
+            'data' => $patient
+        ]);
     }
 }

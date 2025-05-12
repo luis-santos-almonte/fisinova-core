@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use App\Exceptions\ApiExceptionHandler;
 use App\Http\Middleware\ApiResponseFormatter;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -16,5 +17,5 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(ApiResponseFormatter::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        ApiExceptionHandler::register($exceptions);
     })->create();
