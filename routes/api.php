@@ -13,4 +13,5 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('patients', PatientController::class);
+    Route::post('/logout', [AuthController::class, 'logout']);
 });

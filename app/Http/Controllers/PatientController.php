@@ -17,21 +17,13 @@ class PatientController extends Controller
     {
         $patient = Patient::create($request->validated());
 
-        if (!$patient) {
-            throw new \Exception('Error al crear el paciente.');
-        }
-
-        return response()->json([
-            'message' => 'Paciente creado!',
-            'data' => $patient
-        ]);
+        return response()->json(
+            $patient
+        );
     }
 
     public function show(Patient $patient)
     {
-        if (!$patient) {
-            throw new \Exception('Paciente no encontrado.');
-        }
         return response()->json($patient);
     }
 
@@ -39,9 +31,8 @@ class PatientController extends Controller
     {
         $patient->update($request->validated());
 
-        return response()->json([
-            'message' => 'Paciente actualizado!',
-            'data' => $patient
-        ]);
+        return response()->json(
+            $patient
+        );
     }
 }
