@@ -2,21 +2,20 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\HasActiveToggle;
 
 class Patient extends Model
 {
-    use HasFactory;
+    use HasFactory, HasActiveToggle;
 
-    public $incrementing = true;
     public $timestamps = true;
     protected $table = 'patients';
 
     protected $fillable = [
-        'name',
-        'surname',
+        'firstname',
+        'lastname',
         'dni',
         'passport',
         'sex',
@@ -26,5 +25,16 @@ class Patient extends Model
         'cellphone',
         'address',
         'city',
+        'active'
     ];
+
+    protected $casts = [
+        'birthdate' => 'date',
+        'active' => 'boolean',
+    ];
+
+    public function scopeActive($query)
+    {
+        return $query->where('active', true);
+    }
 }
