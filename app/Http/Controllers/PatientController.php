@@ -33,7 +33,11 @@ class PatientController extends Controller
             });
         }
 
-        return response()->json($query->paginate(50));
+        if ($request->filled('paginate')) {
+            return response()->json($query->paginate($request->paginate));
+        }
+
+        return response()->json($query->get());
     }
     public function store(StorePatientRequest $request)
     {
