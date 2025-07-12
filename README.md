@@ -4,48 +4,55 @@ Sistema de gestión para Unidades de Medicina Física y Rehabilitación, desarro
 
 ## 🚀 Requisitos
 
--   Docker
--   Docker Compose
+-   Composer
 -   Git
--   Bash (Linux, macOS o WSL en Windows)
+-   PHP 8x
 
 ## 🛠 Instalación rápida
 
-Clona el repositorio y ejecuta el script de instalación:
-
+- Clona el repositorio
+- Crear el .env a partir del example
 ```bash
-git clone https://github.com/tu-usuario/fisinova-core.git
-cd fisinova-core
-./setup.bat
+copy .env.example .env
+```
+- Instalar el vendor usando composer install
+```bash
+componser install
+```
+- Generar la nueva Key del proyecto en el .env
+```bash
+php artisan key:generate
+```
+- Ejecutar migraciones
+```bash
+php artisan migrate
+```
+- Correr el sistema
+```bash
+php artisan serve
 ```
 
-Este script:
+## ⚙️ Herramientas usadas
 
-1. Copia el archivo .env si no existe.
-2. Construye y levanta los contenedores.
-3. Instala dependencias con Composer.
-4. Ejecuta migraciones de base de datos.
-5. Detecta el puerto real para acceso web.
+    Laravel (PHP 8.4x)
 
-## ⚙️ Servicios incluidos
-
-    Laravel (PHP 8.3)
-
-    PostgreSQL 15
-
-    Nginx
+    PostgreSQL 17
 
     Composer
 
 ## 🧪 Comandos útiles
 
+Si quieres ejecutar los seeders
 ```bash
-# Acceder al contenedor de la app
-docker exec -it fisinova-core bash
+php artisan db:seed
+```
 
-# Ver logs
-docker compose logs -f
+Si quieres volver a migrar y realizar los seeders
+```bash
+php artisan migrate:fresh --seed
+```
 
-# Detener los contenedores
-docker compose down
+Si quieres limpiar la cache del sistema
+```bash
+php artisan cache:clear
 ```
