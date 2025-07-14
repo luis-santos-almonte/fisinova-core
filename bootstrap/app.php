@@ -3,8 +3,8 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use App\Exceptions\ApiExceptionHandler;
-use App\Http\Middleware\ApiResponseFormatter;
+use App\Exceptions\Handler;
+use App\Http\Middleware\FormatJsonResponses;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -14,8 +14,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->append(ApiResponseFormatter::class);
+        $middleware->append(FormatJsonResponses::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        ApiExceptionHandler::register($exceptions);
+        (new Handler(app()))->register();
     })->create();
