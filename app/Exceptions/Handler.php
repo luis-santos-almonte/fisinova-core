@@ -8,24 +8,20 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Throwable;
 use Illuminate\Support\Facades\Log;
 
 class Handler extends ExceptionHandler
 {
-    /**
-     * A list of the exception types that are not reported.
-     *
-     * @var array<int, class-string<Throwable>>
-     */
     protected $dontReport = [
-        // Add exceptions to exclude from logging, if needed
+        ValidationException::class,
+        AuthenticationException::class,
+        AuthorizationException::class,
+        ModelNotFoundException::class,
+        NotFoundHttpException::class,
     ];
 
-    /**
-     * Register the exception handling callbacks for the application.
-     */
     public function register(): void
     {
         $this->renderable(function (ValidationException $e, Request $request) {
@@ -77,20 +73,32 @@ class Handler extends ExceptionHandler
             }
         });
 
-        $this->renderable(function (HttpExceptionInterface $e, Request $request) {
+        $this->renderable(function (NotFoundHttpException $e, Request $request) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'data' => null,
                     'error' => [
-                        'message' => $e->getMessage() ?: 'Error HTTP',
-                        'code' => 'HTTP_ERROR',
+                        'message' => 'Ruta no encontrada',
+                        'code' => 'ROUTE_NOT_FOUND',
                     ],
-                ], $e->getStatusCode());
+                ], 404);
+            }
+        });
+
+        $this->renderable(function (ApiException $e, Request $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'data' => null,
+                    'error' => [
+                        'message' => $e->getMessage(),
+                        'code' => $e->getErrorCode(),
+                    ],
+                ], $e->getCode());
             }
         });
 
         $this->renderable(function (Throwable $e, Request $request) {
-            Log::error('Server Error', [
+            Log::channel('api')->error('Server Error', [
                 'message' => $e->getMessage(),
                 'exception' => get_class($e),
                 'file' => $e->getFile(),
