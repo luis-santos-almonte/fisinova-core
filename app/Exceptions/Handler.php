@@ -11,9 +11,12 @@ use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Throwable;
 use Illuminate\Support\Facades\Log;
+use App\Traits\ApiResponse;
 
 class Handler extends ExceptionHandler
 {
+    use ApiResponse;
+
     protected $dontReport = [
         ValidationException::class,
         AuthenticationException::class,
@@ -26,75 +29,44 @@ class Handler extends ExceptionHandler
     {
         $this->renderable(function (ValidationException $e, Request $request) {
             if ($request->expectsJson()) {
-                return response()->json([
-                    'data' => null,
-                    'error' => [
-                        'message' => 'Datos inválidos',
-                        'details' => $e->errors(),
-                        'code' => 'VALIDATION_ERROR',
-                    ],
-                ], 422);
+                return $this->errorResponse('Datos inválidos', 'VALIDATION_ERROR', 422, $e->errors());
             }
+            return parent::render($request, $e);
         });
 
         $this->renderable(function (AuthenticationException $e, Request $request) {
             if ($request->expectsJson()) {
-                return response()->json([
-                    'data' => null,
-                    'error' => [
-                        'message' => 'Usuario no autenticado',
-                        'code' => 'UNAUTHENTICATED',
-                    ],
-                ], 401);
+                return $this->errorResponse('Usuario no autenticado', 'UNAUTHENTICATED', 401);
             }
+            return parent::render($request, $e);
         });
 
         $this->renderable(function (AuthorizationException $e, Request $request) {
             if ($request->expectsJson()) {
-                return response()->json([
-                    'data' => null,
-                    'error' => [
-                        'message' => 'No autorizado',
-                        'code' => 'UNAUTHORIZED',
-                    ],
-                ], 403);
+                return $this->errorResponse('No autorizado', 'UNAUTHORIZED', 403);
             }
+            return parent::render($request, $e);
         });
 
         $this->renderable(function (ModelNotFoundException $e, Request $request) {
             if ($request->expectsJson()) {
-                return response()->json([
-                    'data' => null,
-                    'error' => [
-                        'message' => 'Recurso no encontrado',
-                        'code' => 'NOT_FOUND',
-                    ],
-                ], 404);
+                return $this->errorResponse('Recurso no encontrado', 'NOT_FOUND', 404);
             }
+            return parent::render($request, $e);
         });
 
         $this->renderable(function (NotFoundHttpException $e, Request $request) {
             if ($request->expectsJson()) {
-                return response()->json([
-                    'data' => null,
-                    'error' => [
-                        'message' => 'Ruta no encontrada',
-                        'code' => 'ROUTE_NOT_FOUND',
-                    ],
-                ], 404);
+                return $this->errorResponse('Ruta no encontrada', 'ROUTE_NOT_FOUND', 404);
             }
+            return parent::render($request, $e);
         });
 
         $this->renderable(function (ApiException $e, Request $request) {
             if ($request->expectsJson()) {
-                return response()->json([
-                    'data' => null,
-                    'error' => [
-                        'message' => $e->getMessage(),
-                        'code' => $e->getErrorCode(),
-                    ],
-                ], $e->getCode());
+                return $this->errorResponse($e->getMessage(), $e->getErrorCode(), $e->getCode(), $e->getDetails());
             }
+            return parent::render($request, $e);
         });
 
         $this->renderable(function (Throwable $e, Request $request) {
@@ -107,19 +79,18 @@ class Handler extends ExceptionHandler
             ]);
 
             if ($request->expectsJson()) {
-                return response()->json([
-                    'data' => null,
-                    'error' => [
-                        'message' => config('app.debug') ? $e->getMessage() : 'Error del servidor',
-                        'code' => 'SERVER_ERROR',
-                        'details' => config('app.debug') ? [
-                            'exception' => get_class($e),
-                            'file' => $e->getFile(),
-                            'line' => $e->getLine(),
-                        ] : null,
-                    ],
-                ], 500);
+                return $this->errorResponse(
+                    config('app.debug') ? $e->getMessage() : 'Error del servidor',
+                    'SERVER_ERROR',
+                    500,
+                    config('app.debug') ? [
+                        'exception' => get_class($e),
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                    ] : null
+                );
             }
+            return parent::render($request, $e);
         });
     }
 }

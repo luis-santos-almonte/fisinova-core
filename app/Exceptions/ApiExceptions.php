@@ -6,16 +6,23 @@ use Exception;
 
 class ApiException extends Exception
 {
-    protected $errorCode;
+    protected string $errorCode;
+    protected ?array $details;
 
-    public function __construct(string $message, int $code = 400, string $errorCode = 'API_ERROR')
+    public function __construct(string $message, int $code = 400, string $errorCode = 'API_ERROR', ?array $details = null)
     {
         parent::__construct($message, $code);
         $this->errorCode = $errorCode;
+        $this->details = $details;
     }
 
-    public function getErrorCode()
+    public function getErrorCode(): string
     {
         return $this->errorCode;
+    }
+
+    public function getDetails(): ?array
+    {
+        return $this->details;
     }
 }
