@@ -17,5 +17,4 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(FormatJsonResponses::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        (new Handler(app()))->register();
     })->create();
