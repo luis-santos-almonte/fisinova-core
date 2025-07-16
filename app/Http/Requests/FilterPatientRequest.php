@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class FilterPatientRequest extends FormRequest
 {
@@ -22,7 +23,7 @@ class FilterPatientRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'active' => 'sometimes|boolean',
+            'active' => ['sometimes', Rule::in(['true', 'false'])],
             'start_date' => 'sometimes|date',
             'end_date' => 'sometimes|date|after_or_equal:start_date',
             'city' => 'sometimes|string|max:255',

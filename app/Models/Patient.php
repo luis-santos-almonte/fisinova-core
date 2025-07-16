@@ -33,8 +33,8 @@ class Patient extends Model
         'active' => 'boolean',
     ];
 
-    public function scopeActive($query)
+    public function scopeActive($query, $active)
     {
-        return $query->where('active', true);
+        return $query->where('active', $active);
     }
 }

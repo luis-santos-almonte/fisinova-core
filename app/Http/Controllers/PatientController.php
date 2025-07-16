@@ -15,7 +15,7 @@ class PatientController extends Controller
         $query = Patient::query();
 
         if ($request->has('active')) {
-            $query->where('active', $request->active);
+            $query->active($request->active);
         }
 
         if ($request->filled('start_date') && $request->filled('end_date')) {
@@ -33,8 +33,13 @@ class PatientController extends Controller
             });
         }
 
+        if ($request->filled('sort')) {
+            $query->orderBy($request->sort, $request->input('order', 'asc'));
+        }
+
         return response()->json($query->paginate(50));
     }
+
     public function store(StorePatientRequest $request)
     {
         $patient = Patient::create($request->validated());
