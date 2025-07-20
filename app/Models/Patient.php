@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\HasActiveScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Traits\HasActiveToggle;
 
 class Patient extends Model
 {
-    use HasFactory, HasActiveToggle;
+    use HasFactory, HasActiveToggle, HasActiveScope;
 
     public $timestamps = true;
     protected $table = 'patients';
@@ -32,9 +33,4 @@ class Patient extends Model
         'birthdate' => 'date',
         'active' => 'boolean',
     ];
-
-    public function scopeActive($query, $active)
-    {
-        return $query->where('active', $active);
-    }
 }
