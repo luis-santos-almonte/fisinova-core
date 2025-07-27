@@ -49,8 +49,9 @@ class AuthController extends Controller
         );
 
         return response()->json([
+            'error' => false,
             'message' => 'Inicio de sesión exitoso',
-            'user' => $user->only(['id', 'name', 'email']),
+            'data' => $user->only(['id', 'name', 'email']),
         ], 200)->withCookie($cookie);
     }
 
@@ -72,7 +73,7 @@ class AuthController extends Controller
     );
 
     return response()->json([
-        'success' => true,
+        'error' => false,
         'message' => 'Sesión cerrada exitosamente',
         'data' => null
     ], 200)->withCookie($cookie);
