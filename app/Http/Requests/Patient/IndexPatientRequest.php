@@ -3,15 +3,16 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
-class FilterPatientRequest extends FormRequest
+class IndexPatientRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
      */
     public function authorize(): bool
     {
-        return true;
+        return false;
     }
 
     /**
@@ -22,11 +23,12 @@ class FilterPatientRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'active' => 'sometimes|boolean',
+            'active' => ['sometimes', Rule::in(['true', 'false', '1', '0'])],
             'start_date' => 'sometimes|date',
             'end_date' => 'sometimes|date|after_or_equal:start_date',
             'city' => 'sometimes|string|max:255',
             'name' => 'sometimes|string|max:255',
+            'paginate' => 'sometimes|integer|min:1'
         ];
     }
 }
