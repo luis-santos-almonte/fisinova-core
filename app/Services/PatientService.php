@@ -2,34 +2,59 @@
 
 namespace App\Services;
 
-use App\Http\Requests\FilterPatientRequest;
 use App\Models\Patient;
+use App\Validators\Patient\PatientFilterValidator;
 
 class PatientService
 {
-    public function getPatients(FilterPatientRequest $request)
+    public function getAllPatients(array $filters = [])
     {
+        $filters = PatientFilterValidator::validate($filters);
+
+        $pagination = $filters['paginate'] ?? 10;
         $query = Patient::query();
 
-        if ($request->has('active')) {
-            $query->where('active', $request->active);
+        if (isset($filters['active'])) {
+            $active = $filters['active'] === 'true';
+            $query->active($active);
         }
-
-        if ($request->filled('start_date') && $request->filled('end_date')) {
-            $query->whereBetween('created_at', [$request->start_date, $request->end_date]);
+        if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
+            $query->whereBetween('created_at', [$filters['start_date'], $filters['end_date']]);
         }
-
-        if ($request->filled('city')) {
-            $query->where('city', $request->city);
+        if (!empty($filters['city'])) {
+            $query->where('city', $filters['city']);
         }
-
-        if ($request->filled('name')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('firstname', 'ILIKE', "%{$request->name}%")
-                    ->orWhere('lastname', 'ILIKE', "%{$request->name}%");
+        if (!empty($filters['name'])) {
+            $query->where(function ($q) use ($filters) {
+                $q->where('firstname', 'ILIKE', "%{$filters['name']}%")
+                    ->orWhere('lastname', 'ILIKE', "%{$filters['name']}%");
             });
         }
 
-        return $query->paginate(50);
+        return $query->simplePaginate($pagination);
+    }
+
+    public function getPatientById($id)
+    {
+        return Patient::findOrFail($id);
+    }
+
+    public function createPatient(array $data)
+    {
+        return Patient::create($data);
+    }
+
+    public function updatePatient($id, array $data)
+    {
+        $patient = Patient::findOrFail($id);
+        $patient->update($data);
+        return $patient;
+    }
+
+    public function deletePatient($id)
+    {
+        $patient = Patient::findOrFail($id);
+        $patient->delete();
+        return true;
     }
 }
