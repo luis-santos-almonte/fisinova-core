@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\HasActiveScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\HasActiveToggle;
 
 class Employee extends Model
 {
-    use HasFactory;
+    use HasFactory, HasActiveScope, HasActiveToggle;
 
     public $timestamps = true;
 
@@ -26,17 +28,12 @@ class Employee extends Model
         'active' => 'boolean',
     ];
 
-    public function scopeActive($query)
-    {
-        return $query->where('active', true);
-    }
-
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    public function job()
+    public function position()
     {
         return $this->belongsTo(Position::class);
     }

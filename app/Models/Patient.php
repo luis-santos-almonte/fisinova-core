@@ -26,6 +26,8 @@ class Patient extends Model
         'cellphone',
         'address',
         'city',
+        'insurance_code',
+        'insurance_id',
         'active'
     ];
 

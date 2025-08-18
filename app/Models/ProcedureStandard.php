@@ -2,23 +2,20 @@
 
 namespace App\Models;
 
-use App\Traits\HasActiveScope;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\HasActiveScope;
 use App\Traits\HasActiveToggle;
 
-class Schedules extends Model
+class ProcedureStandard extends Model
 {
     use HasFactory, HasActiveScope, HasActiveToggle;
-
     public $timestamps = true;
 
     protected $fillable = [
-        'day_of_week',
-        'start_time',
-        'end_time',
-        'break_start',
-        'break_end',
+        'description',
+        'category',
+        'standard',
         'active',
     ];
 
@@ -26,8 +23,8 @@ class Schedules extends Model
         'active' => 'boolean',
     ];
 
-    public function employee()
+    public function procedureDetails()
     {
-        return $this->belongsTo(Employee::class);
+        return $this->hasMany(ProcedureDetail::class);
     }
 }
