@@ -28,7 +28,7 @@ class IndexPatientRequest extends FormRequest
             'end_date' => 'sometimes|date|after_or_equal:start_date',
             'city' => 'sometimes|string|max:255',
             'name' => 'sometimes|string|max:255',
-            'paginate' => 'sometimes|integer|min:1'
+            'paginate' => 'sometimes|integer|min:1|max:100',
         ];
     }
 }

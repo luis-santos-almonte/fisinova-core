@@ -33,7 +33,7 @@ class PatientService
 
         return $query->simplePaginate($pagination);
     }
-    
+
     public function getPatientById($id)
     {
         return Patient::findOrFail($id);
