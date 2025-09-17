@@ -27,4 +27,14 @@ class ProcedureStandard extends Model
     {
         return $this->hasMany(ProcedureDetail::class);
     }
+
+    public function procedureDiagnostics()
+    {
+        return $this->hasMany(ProcedureDiagnostic::class);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('active', true);
+    }
 }

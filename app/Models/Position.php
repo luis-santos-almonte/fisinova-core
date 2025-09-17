@@ -17,6 +17,10 @@ class Position extends Model
         'active'
     ];
 
+    protected $casts = [
+        'active' => 'boolean',
+    ];
+
     public function scopeActive($query)
     {
         return $query->where('active', true);

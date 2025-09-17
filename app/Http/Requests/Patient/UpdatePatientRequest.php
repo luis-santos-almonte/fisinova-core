@@ -22,7 +22,17 @@ class UpdatePatientRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'firstname' => 'sometimes|string|max:255',
+            'lastname' => 'sometimes|string|max:255',
+            'dni' => 'sometimes|string|max:20',
+            'passport' => 'sometimes|string|max:20',
+            'sex' => 'sometimes|string|max:10',
+            'birthdate' => 'sometimes|date',
+            'email' => 'sometimes|email|max:255',
+            'phone' => 'sometimes|string|max:20',
+            'cellphone' => 'sometimes|string|max:20',
+            'address' => 'sometimes|string|max:255',
+            'city' => 'sometimes|string|max:255',
         ];
     }
 }

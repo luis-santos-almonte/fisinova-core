@@ -22,8 +22,8 @@ class StorePatientRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => 'required|string|max:255',
-            'surname' => 'nullable|string|max:255',
+            'firstname' => 'required|string|max:255',
+            'lastname' => 'nullable|string|max:255',
             'dni' => 'nullable|string|max:20',
             'passport' => 'nullable|string|max:20',
             'sex' => 'nullable|string|max:10',

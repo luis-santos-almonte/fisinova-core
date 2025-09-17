@@ -30,4 +30,9 @@ class Schedules extends Model
     {
         return $this->belongsTo(Employee::class);
     }
+
+    public function scopeActive($query)
+    {
+        return $query->where('active', true);
+    }
 }

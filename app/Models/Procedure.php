@@ -60,4 +60,9 @@ class Procedure extends Model
     {
         return $this->hasMany(ProcedureDiagnostic::class);
     }
+
+    public function scopeActive($query)
+    {
+        return $query->where('active', true);
+    }
 }

@@ -18,8 +18,17 @@ class ProcedureType extends Model
         'active',
     ];
 
+    protected $casts = [
+        'active' => 'boolean',
+    ];
+
     public function procedures()
     {
         return $this->hasMany(Procedure::class);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('active', true);
     }
 }

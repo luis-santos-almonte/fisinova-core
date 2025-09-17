@@ -35,4 +35,14 @@ class Patient extends Model
         'birthdate' => 'date',
         'active' => 'boolean',
     ];
+
+    public function insurance()
+    {
+        return $this->belongsTo(Insurance::class);
+    }
+
+    public function appointments()
+    {
+        return $this->hasMany(Appointment::class);
+    }
 }

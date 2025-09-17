@@ -42,4 +42,14 @@ class Employee extends Model
     {
         return $this->hasMany(Schedules::class);
     }
+
+    public function appointments()
+    {
+        return $this->hasMany(Appointment::class);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('active', true);
+    }
 }

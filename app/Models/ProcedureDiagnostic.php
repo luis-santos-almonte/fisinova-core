@@ -33,4 +33,24 @@ class ProcedureDiagnostic extends Model
     {
         return $this->belongsTo(DiagnosticStandard::class);
     }
+
+    public function procedureDetail()
+    {
+        return $this->belongsTo(ProcedureDetail::class);
+    }
+
+    public function procedureStandard()
+    {
+        return $this->belongsTo(ProcedureStandard::class);
+    }
+
+    public function procedureDiagnostics()
+    {
+        return $this->hasMany(ProcedureDiagnostic::class);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('active', true);
+    }
 }

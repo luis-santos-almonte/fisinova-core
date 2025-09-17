@@ -25,6 +25,6 @@ class Insurance extends Model
 
     public function appointments()
     {
-        return $this->hasMany(Appoinntment::class);
+        return $this->hasMany(Appointment::class);
     }
 }

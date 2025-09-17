@@ -42,4 +42,14 @@ class Appointment extends Model
     {
         return $this->belongsTo(Insurance::class);
     }
+
+    public function patient()
+    {
+        return $this->belongsTo(Patient::class);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('active', true);
+    }
 }
