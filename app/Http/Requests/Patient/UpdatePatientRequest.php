@@ -1,38 +1,45 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Patient;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdatePatientRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
         return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
+        $patientId = $this->route('patient')->id;
+        
         return [
             'firstname' => 'sometimes|string|max:255',
             'lastname' => 'sometimes|string|max:255',
-            'dni' => 'sometimes|string|max:20',
+            'dni' => [
+                'sometimes',
+                'string',
+                'max:20',
+                Rule::unique('patients')->ignore($patientId)
+            ],
             'passport' => 'sometimes|string|max:20',
             'sex' => 'sometimes|string|max:10',
-            'birthdate' => 'sometimes|date',
-            'email' => 'sometimes|email|max:255',
+            'birthdate' => 'sometimes|date|before:today',
+            'email' => [
+                'sometimes',
+                'email',
+                'max:255',
+                Rule::unique('patients')->ignore($patientId)
+            ],
             'phone' => 'sometimes|string|max:20',
             'cellphone' => 'sometimes|string|max:20',
-            'address' => 'sometimes|string|max:255',
+            'address' => 'sometimes|string|max:500',
             'city' => 'sometimes|string|max:255',
+            'insurance_code' => 'sometimes|string|max:255',
+            'insurance_id' => 'sometimes|integer|exists:insurances,id',
         ];
     }
 }

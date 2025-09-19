@@ -3,40 +3,42 @@
 namespace App\Services;
 
 use App\Models\Patient;
-use App\Validators\Patient\PatientFilterValidator;
 
 class PatientService
 {
     public function getAllPatients(array $filters = [])
     {
-        $filters = PatientFilterValidator::validate($filters);
-
-        $pagination = $filters['paginate'] ?? 10;
         $query = Patient::query();
 
+        // Apply filters
         if (isset($filters['active'])) {
-            $active = $filters['active'] === 'true';
-            $query->active($active);
+            $active = $filters['active'] === 'true' || $filters['active'] === '1';
+            $query->where('active', $active);
         }
-        if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
-            $query->whereBetween('created_at', [$filters['start_date'], $filters['end_date']]);
-        }
-        if (!empty($filters['city'])) {
-            $query->where('city', $filters['city']);
-        }
-        if (!empty($filters['name'])) {
+
+        if (!empty($filters['search'])) {
             $query->where(function ($q) use ($filters) {
-                $q->where('firstname', 'ILIKE', "%{$filters['name']}%")
-                    ->orWhere('lastname', 'ILIKE', "%{$filters['name']}%");
+                $q->where('firstname', 'ILIKE', "%{$filters['search']}%")
+                    ->orWhere('lastname', 'ILIKE', "%{$filters['search']}%")
+                    ->orWhere('dni', 'ILIKE', "%{$filters['search']}%")
+                    ->orWhere('email', 'ILIKE', "%{$filters['search']}%");
             });
         }
 
-        return $query->simplePaginate($pagination);
+        if (!empty($filters['city'])) {
+            $query->where('city', 'ILIKE', "%{$filters['city']}%");
+        }
+
+        $pagination = $filters['paginate'] ?? 15;
+
+        return $query->with(['insurance'])
+            ->orderBy('created_at', 'desc')
+            ->simplePaginate($pagination);
     }
 
     public function getPatientById($id)
     {
-        return Patient::findOrFail($id);
+        return Patient::with(['insurance', 'appointments'])->findOrFail($id);
     }
 
     public function createPatient(array $data)

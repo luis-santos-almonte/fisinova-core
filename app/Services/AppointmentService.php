@@ -2,21 +2,18 @@
 
 namespace App\Services;
 
-use App\Models\Appoinntment;
 use App\Models\Appointment;
-use App\Validators\Appointment\AppointmentFilterValidator;
 
 class AppointmentService
 {
     public function getAllAppointments(array $filters = [])
     {
-        $filters = AppointmentFilterValidator::validate($filters);
-
-        $pagination = $filters['paginate'] ?? 10;
         $query = Appointment::query();
 
+        // Apply filters
         if (isset($filters['active'])) {
-            $query->active($filters['active'] === 'true' || $filters['active'] === 1);
+            $active = $filters['active'] === 'true' || $filters['active'] === '1';
+            $query->where('active', $active);
         }
 
         if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
@@ -31,30 +28,22 @@ class AppointmentService
             $query->where('patient_id', $filters['patient_id']);
         }
 
-        if (!empty($filters['insurance_id'])) {
-            $query->where('insurance_id', $filters['insurance_id']);
+        if (!empty($filters['status'])) {
+            $query->where('status', $filters['status']);
         }
 
-        if (!empty($filters['dni'])) {
-            $query->where('dni', $filters['dni']);
-        }
+        $pagination = $filters['paginate'] ?? 15;
 
-        if (!empty($filters['phone'])) {
-            $query->where('phone', $filters['phone']);
-        }
-
-        if (!empty($filters['passport'])) {
-            $query->where('passport', $filters['passport']);
-        }
-
-        return $query
-            ->with(['employee', 'insurance'])
-            ->simplePaginate($pagination);
+        return $query->with(['employee', 'patient', 'insurance'])
+                     ->orderBy('appointment_date')
+                     ->orderBy('start_time')
+                     ->simplePaginate($pagination);
     }
 
     public function getAppointmentById($id)
     {
-        return Appointment::with(['employee', 'insurance'])->findOrFail($id);
+        return Appointment::with(['employee', 'patient', 'insurance', 'procedures'])
+                         ->findOrFail($id);
     }
 
     public function createAppointment(array $data)

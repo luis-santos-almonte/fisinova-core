@@ -12,7 +12,7 @@ class Procedure extends Model
         'appointment_id',
         'patient_id',
         'employee_id',
-        'procedure_type',
+        'procedure_type_id', // ✅ Fixed to use procedure_types table
         'insurance_code',
         'insurance_id',
         'case_number',
@@ -26,7 +26,7 @@ class Procedure extends Model
         'active' => 'boolean',
     ];
 
-    public function appointments()
+    public function appointment()
     {
         return $this->belongsTo(Appointment::class);
     }
@@ -41,7 +41,7 @@ class Procedure extends Model
         return $this->belongsTo(Employee::class);
     }
 
-    public function procedureType()
+    public function procedureType() // ✅ Fixed to use ProcedureType model
     {
         return $this->belongsTo(ProcedureType::class);
     }

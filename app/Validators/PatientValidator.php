@@ -12,11 +12,9 @@ class PatientFilterValidator
     {
         $rules = [
             'active' => ['sometimes', Rule::in(['true', 'false'])],
-            'start_date' => 'sometimes|date',
-            'end_date' => 'sometimes|date|after_or_equal:start_date',
+            'search' => 'sometimes|string|min:2|max:255',
             'city' => 'sometimes|string|max:255',
-            'name' => 'sometimes|string|max:255',
-            'paginate' => 'sometimes|integer|min:1',
+            'paginate' => 'sometimes|integer|min:1|max:100',
         ];
 
         $validator = Validator::make($data, $rules);
