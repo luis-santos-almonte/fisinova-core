@@ -1,4 +1,5 @@
 <?php
+// database/seeders/BasicUserSeeder.php (o UserSeeder.php)
 
 namespace Database\Seeders;
 
@@ -13,15 +14,47 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        // Get roles and positions
+        echo "🔍 Verificando roles y positions...\n";
+
+        // Get roles
         $adminRole = Role::where('name', 'admin')->first();
         $medicRole = Role::where('name', 'medic')->first();
         $therapistRole = Role::where('name', 'therapist')->first();
 
+        // Get positions - NOMBRES EXACTOS de tu PositionSeeder actual
         $adminPosition = Position::where('name', 'Administrador')->first();
-        $medicPosition = Position::where('name', 'Médico')->first();
-        $therapistPosition = Position::where('name', 'Terapista')->first();
+        $medicPosition = Position::where('name', 'Médico')->first(); // ✅ Coincide exacto
+        $therapistPosition = Position::where('name', 'Terapista')->first(); // ✅ Coincide exacto
 
+        // Verificar que existan
+        if (!$adminRole) {
+            echo "❌ Role 'admin' no encontrado\n";
+            return;
+        }
+        if (!$medicRole) {
+            echo "❌ Role 'medic' no encontrado\n";
+            return;
+        }
+        if (!$therapistRole) {
+            echo "❌ Role 'therapist' no encontrado\n";
+            return;
+        }
+        if (!$adminPosition) {
+            echo "❌ Position 'Administrador' no encontrado\n";
+            return;
+        }
+        if (!$medicPosition) {
+            echo "❌ Position 'Médico' no encontrado\n";
+            return;
+        }
+        if (!$therapistPosition) {
+            echo "❌ Position 'Terapista' no encontrado\n";
+            return;
+        }
+
+        echo "✅ Todos los roles y positions encontrados\n";
+
+        // 1. ADMIN USER
         $admin = User::updateOrCreate(
             ['email' => 'admin@system.com'],
             [
@@ -44,8 +77,9 @@ class UserSeeder extends Seeder
             ]
         );
 
+        // 2. MEDIC USER
         $medic = User::updateOrCreate(
-            ['email' => 'medic@system.com'],
+            ['email' => 'fulanitodoc@system.com'],
             [
                 'name' => 'Fulanito',
                 'email' => 'fulanitodoc@system.com',
@@ -66,6 +100,7 @@ class UserSeeder extends Seeder
             ]
         );
 
+        // 3. THERAPIST USER
         $therapist = User::updateOrCreate(
             ['email' => 'layiyi@system.com'],
             [
@@ -88,14 +123,14 @@ class UserSeeder extends Seeder
             ]
         );
 
-        if ($adminRole) {
-            $admin->roles()->syncWithoutDetaching([$adminRole->id => ['active' => true]]);
-        }
-        if ($medicRole) {
-            $medic->roles()->syncWithoutDetaching([$medicRole->id => ['active' => true]]);
-        }
-        if ($therapistRole) {
-            $therapist->roles()->syncWithoutDetaching([$therapistRole->id => ['active' => true]]);
-        }
+        // Assign roles
+        $admin->roles()->syncWithoutDetaching([$adminRole->id => ['active' => true]]);
+        $medic->roles()->syncWithoutDetaching([$medicRole->id => ['active' => true]]);
+        $therapist->roles()->syncWithoutDetaching([$therapistRole->id => ['active' => true]]);
+
+        echo "✅ Usuarios creados exitosamente:\n";
+        echo "   - admin@system.com (Admin)\n";
+        echo "   - fulanitodoc@system.com (Médico)\n";
+        echo "   - layiyi@system.com (Terapista)\n";
     }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\ProcedureController;
+use App\Http\Controllers\EmployeeController;
 
 Route::post('/login', [AuthController::class, 'login']);
 

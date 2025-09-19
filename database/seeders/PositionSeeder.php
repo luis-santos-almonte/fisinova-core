@@ -10,10 +10,9 @@ class PositionSeeder extends Seeder
     public function run(): void
     {
         $positions = [
-            ['name' => 'Médico General', 'description' => 'Médico de medicina general', 'active' => true],
-            ['name' => 'Fisioterapeuta', 'description' => 'Especialista en fisioterapia', 'active' => true],
-            ['name' => 'Terapeuta Respiratorio', 'description' => 'Especialista en terapia respiratoria', 'active' => true],
-            ['name' => 'Recepcionista', 'description' => 'Personal de recepción', 'active' => true],
+            ['name' => 'Médico', 'description' => 'Médico', 'active' => true],
+            ['name' => 'Terapista', 'description' => 'Especialista en fisioterapia', 'active' => true],
+            ['name' => 'Secretaria', 'description' => 'Personal de recepción', 'active' => true],
             ['name' => 'Administrador', 'description' => 'Administrador del sistema', 'active' => true],
         ];
 
