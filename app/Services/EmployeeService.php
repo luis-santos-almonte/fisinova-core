@@ -9,39 +9,38 @@ class EmployeeService
 {
     public function getAllEmployees(array $filters = [])
     {
-        $filters = EmployeeFilterValidator::validate($filters);
-
-        $pagination = $filters['paginate'] ?? 10;
         $query = Employee::query();
 
+        // Filtro por estado activo
         if (isset($filters['active'])) {
-            $query->active($filters['active'] === 'true' || $filters['active'] === 1);
+            $active = $filters['active'] === 'true' || $filters['active'] === '1';
+            $query->where('active', $active);
         }
 
-        if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
-            $query->whereBetween('created_at', [$filters['start_date'], $filters['end_date']]);
-        }
-
-        if (!empty($filters['dni'])) {
-            $query->where('dni', $filters['dni']);
-        }
-
-        if (!empty($filters['name'])) {
+        // Filtro de búsqueda por texto
+        if (!empty($filters['search'])) {
             $query->where(function ($q) use ($filters) {
-                $q->where('firstname', 'ILIKE', "%{$filters['name']}%")
-                    ->orWhere('lastname', 'ILIKE', "%{$filters['name']}%");
+                $q->where('firstname', 'ILIKE', "%{$filters['search']}%")
+                    ->orWhere('lastname', 'ILIKE', "%{$filters['search']}%")
+                    ->orWhere('dni', 'ILIKE', "%{$filters['search']}%");
             });
         }
 
-        if (!empty($filters['email'])) {
-            $query->where('email', 'ILIKE', "%{$filters['email']}%");
-        }
-
+        // Filtro por position_id específico
         if (!empty($filters['position_id'])) {
             $query->where('position_id', $filters['position_id']);
         }
 
-        return $query->with(['user', 'position'])->simplePaginate($pagination);
+        // Filtro por tipo médico (Médico=1, Terapista=2)
+        if (!empty($filters['type']) && $filters['type'] === 'medical') {
+            $query->whereIn('position_id', [1, 2]); // Médico y Terapista
+        }
+
+        $pagination = $filters['paginate'] ?? 15;
+
+        return $query->with(['position'])
+            ->orderBy('firstname')
+            ->simplePaginate($pagination);
     }
 
     public function getEmployeeById($id)

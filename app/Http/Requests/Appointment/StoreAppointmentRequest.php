@@ -26,6 +26,9 @@ class StoreAppointmentRequest extends FormRequest
             'passport' => 'nullable|string|max:20',
             'insurance_code' => 'nullable|string|max:255',
             'insurance_id' => 'nullable|integer|exists:insurances,id',
+            'guest_firstname' => 'nullable|string|max:100',
+            'guest_lastname' => 'nullable|string|max:100',
+            'active' => 'sometimes|boolean',
         ];
     }
 }

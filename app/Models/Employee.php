@@ -22,6 +22,8 @@ class Employee extends Model
         'email',
         'address',
         'active',
+        'position_id',
+        'user_id',
     ];
 
     protected $casts = [

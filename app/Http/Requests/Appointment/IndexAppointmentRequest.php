@@ -16,8 +16,8 @@ class IndexAppointmentRequest extends FormRequest
     {
         return [
             'active' => ['sometimes', Rule::in(['true', 'false', '1', '0'])],
-            'start_date' => 'sometimes|date',
-            'end_date' => 'sometimes|date|after_or_equal:start_date',
+            'start_time' => 'sometimes|date',
+            'end_time' => 'sometimes|date|after_or_equal:start_date',
             'employee_id' => 'sometimes|integer|exists:employees,id',
             'patient_id' => 'sometimes|integer|exists:patients,id',
             'status' => 'sometimes|string|max:50',

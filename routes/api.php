@@ -10,12 +10,9 @@ use App\Http\Controllers\EmployeeController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
-Route::middleware(['auth:sanctum', 'web'])->group(function () {
-
+Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/user', function (Request $request) {
-        return $request->user();
-    });
+    Route::get('/user', [AuthController::class, 'user']);
 
     Route::apiResource('patients', PatientController::class);
     Route::apiResource('appointments', AppointmentController::class);

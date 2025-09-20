@@ -15,10 +15,8 @@ class Appointment extends Model
     protected $fillable = [
         'employee_id',
         'patient_id',
-        'hour_start',
-        'minute_start',
-        'hour_end',
-        'minute_end',
+        'start_time',
+        'end_time',
         'appointment_date',
         'active',
         'notes',
@@ -27,10 +25,15 @@ class Appointment extends Model
         'passport',
         'insurance_code',
         'insurance_id',
+        'guest_firstname',
+        'guest_lastname',
+        'status',
     ];
 
     protected $casts = [
-        'appointment_date' => 'datetime',
+        'appointment_date' => 'date',
+        'start_time' => 'datetime:H:i',
+        'end_time' => 'datetime:H:i',
     ];
 
     public function employee()
