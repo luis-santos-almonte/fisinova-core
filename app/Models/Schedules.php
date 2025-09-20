@@ -14,7 +14,9 @@ class Schedules extends Model
     public $timestamps = true;
 
     protected $fillable = [
-        'day_of_week',
+        'employee_id',
+        'start_day',
+        'end_day',
         'start_time',
         'end_time',
         'break_start',

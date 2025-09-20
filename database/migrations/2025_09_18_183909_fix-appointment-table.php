@@ -36,7 +36,7 @@ return new class extends Migration
                     $table->time('end_time')->after('start_time');
                 }
                 if (!Schema::hasColumn('appointments', 'status')) {
-                    $table->string('status')->default('scheduled')->after('end_time');
+                    $table->string('status')->default('programada')->after('end_time');
                 }
 
                 // Eliminar columnas viejas si existen

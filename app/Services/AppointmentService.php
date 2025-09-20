@@ -10,7 +10,7 @@ class AppointmentService
     {
         $query = Appointment::query();
 
-        // Apply filters
+
         if (isset($filters['active'])) {
             $active = $filters['active'] === 'true' || $filters['active'] === '1';
             $query->where('active', $active);
@@ -35,15 +35,15 @@ class AppointmentService
         $pagination = $filters['paginate'] ?? 15;
 
         return $query->with(['employee', 'patient', 'insurance'])
-                     ->orderBy('appointment_date')
-                     ->orderBy('start_time')
-                     ->simplePaginate($pagination);
+            ->orderBy('appointment_date')
+            ->orderBy('start_time')
+            ->simplePaginate($pagination);
     }
 
     public function getAppointmentById($id)
     {
         return Appointment::with(['employee', 'patient', 'insurance', 'procedures'])
-                         ->findOrFail($id);
+            ->findOrFail($id);
     }
 
     public function createAppointment(array $data)
