@@ -51,6 +51,11 @@ class Appointment extends Model
         return $this->belongsTo(Patient::class);
     }
 
+    public function procedures()
+    {
+        return $this->hasMany(Procedure::class);
+    }
+
     public function scopeActive($query)
     {
         return $query->where('active', true);

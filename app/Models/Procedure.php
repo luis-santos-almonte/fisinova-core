@@ -41,7 +41,7 @@ class Procedure extends Model
         return $this->belongsTo(Employee::class);
     }
 
-    public function procedureType() // ✅ Fixed to use ProcedureType model
+    public function procedureType()
     {
         return $this->belongsTo(ProcedureType::class);
     }

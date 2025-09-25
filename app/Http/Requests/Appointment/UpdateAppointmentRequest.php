@@ -15,8 +15,8 @@ class UpdateAppointmentRequest extends FormRequest
     {
         return [
             'employee_id' => 'sometimes|integer|exists:employees,id',
-            'patient_id' => 'sometimes|integer|exists:patients,id',
-            'appointment_date' => 'sometimes|date|after_or_equal:today',
+            'patient_id' => 'sometimes|integer|nullable|exists:patients,id',
+            'appointment_date' => 'sometimes|date',
             'start_time' => 'sometimes|date_format:H:i',
             'end_time' => 'sometimes|date_format:H:i|after:start_time',
             'status' => 'sometimes|string|max:50',
