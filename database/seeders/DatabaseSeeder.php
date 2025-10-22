@@ -15,6 +15,8 @@ class DatabaseSeeder extends Seeder
             ProcedureTypeSeeder::class,
             UserSeeder::class,
             PatientSeeder::class,
+            CubicleSeeder::class,
+            ScheduleTemplateSeeder::class,
         ]);
     }
 }
