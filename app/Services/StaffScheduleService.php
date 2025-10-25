@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\StaffSchedule;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class StaffScheduleService
 {
@@ -62,10 +63,32 @@ class StaffScheduleService
     public function createStaffSchedule(array $data)
     {
         return DB::transaction(function () use ($data) {
+            // Log para debugging
+            Log::info('Creating staff schedule', ['data' => $data]);
+
             // Validar que no haya conflictos de horario
             $this->validateScheduleConflict($data);
 
-            return StaffSchedule::create($data);
+            // Crear la asignación
+            $staffSchedule = StaffSchedule::create([
+                'staff_id' => $data['staff_id'],
+                'schedule_day_id' => $data['schedule_day_id'],
+                'cubicle_id' => $data['cubicle_id'] ?? null,
+                'assignment_date' => $data['assignment_date'] ?? null,
+                'end_date' => $data['end_date'] ?? null,
+                'is_override' => $data['is_override'] ?? false,
+                'original_staff_id' => $data['original_staff_id'] ?? null,
+                'status' => $data['status'] ?? 'active',
+                'notes' => $data['notes'] ?? null,
+            ]);
+
+            // Cargar relaciones
+            return $staffSchedule->load([
+                'staff.position',
+                'scheduleDay.scheduleTemplate',
+                'cubicle',
+                'originalStaff'
+            ]);
         });
     }
 
@@ -81,7 +104,13 @@ class StaffScheduleService
             }
 
             $staffSchedule->update($data);
-            return $staffSchedule;
+            
+            return $staffSchedule->load([
+                'staff.position',
+                'scheduleDay.scheduleTemplate',
+                'cubicle',
+                'originalStaff'
+            ]);
         });
     }
 

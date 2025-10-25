@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StaffSchedule\StoreStaffScheduleRequest;
-use App\Http\Requests\StaffSchedule\UpdateStaffScheduleRequest;
-use App\Http\Requests\StaffSchedule\IndexStaffScheduleRequest;
+use App\Http\Requests\Staff\StoreStaffScheduleRequest;
+use App\Http\Requests\Staff\UpdateStaffScheduleRequest;
+use App\Http\Requests\Staff\IndexStaffScheduleRequest;
 use App\Models\StaffSchedule;
 use App\Services\StaffScheduleService;
 use App\Traits\ApiResponse;
