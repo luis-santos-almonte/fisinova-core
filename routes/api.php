@@ -8,6 +8,7 @@ use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\ProcedureController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\InsuranceController;
+use App\Http\Controllers\AuthorizationController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -20,4 +21,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('procedures', ProcedureController::class);
     Route::apiResource('employees', EmployeeController::class)->only(['index', 'show']);
     Route::apiResource('insurances', InsuranceController::class)->only(['index', 'show']);
+    Route::apiResource('authorizations', AuthorizationController::class);
+    Route::post('/appointments/{id}/confirm', [AuthorizationController::class, 'confirmAppointment']);
 });
