@@ -27,6 +27,7 @@ class Authorization extends Model
         'medic_specialty',
         'notes',
         'services_authorized',
+        'diagnosis_codes',
         'active',
     ];
 
@@ -34,6 +35,7 @@ class Authorization extends Model
         'authorization_date' => 'date',
         'active' => 'boolean',
         'services_authorized' => 'array',
+        'diagnosis_codes' => 'array',
     ];
 
     public function appointment()

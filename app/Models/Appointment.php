@@ -33,6 +33,7 @@ class Appointment extends Model
         'authorization_number',
         'confirmed_at',
         'confirmed_by',
+        'type',
     ];
 
     protected $casts = [
@@ -42,6 +43,9 @@ class Appointment extends Model
         'active' => 'boolean',
         'confirmed_at' => 'datetime',
     ];
+
+    const TYPE_CONSULTATION = 'consultation';
+    const TYPE_THERAPY = 'therapy';
 
     public function employee()
     {
@@ -93,5 +97,20 @@ class Appointment extends Model
     public function scopeActive($query)
     {
         return $query->where('active', true);
+    }
+
+    public function isConsultation(): bool
+    {
+        return $this->type === self::TYPE_CONSULTATION;
+    }
+
+    public function isTherapy(): bool
+    {
+        return $this->type === self::TYPE_THERAPY;
+    }
+
+    public function requiresPriorAuthorization(): bool
+    {
+        return in_array($this->type, [self::TYPE_THERAPY]);
     }
 }
