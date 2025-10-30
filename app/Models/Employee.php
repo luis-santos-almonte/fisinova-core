@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Traits\HasActiveScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Traits\HasActiveToggle;
 
 class Employee extends Model
@@ -30,12 +32,12 @@ class Employee extends Model
         'active' => 'boolean',
     ];
 
-    public function user()
+    public function user(): HasOne
     {
-        return $this->belongsTo(User::class);
+        return $this->hasOne(User::class, 'employee_id');
     }
 
-    public function position()
+    public function position(): BelongsTo
     {
         return $this->belongsTo(Position::class);
     }
