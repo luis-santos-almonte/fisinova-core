@@ -12,7 +12,7 @@ class PositionSeeder extends Seeder
         $positions = [
             ['name' => 'Médico', 'description' => 'Médico', 'active' => true],
             ['name' => 'Terapista', 'description' => 'Especialista en fisioterapia', 'active' => true],
-            ['name' => 'Secretaria', 'description' => 'Personal de recepción', 'active' => true],
+            ['name' => 'Secretaria', 'description' => 'Personal de recepción', 'active' => true], // ✅ YA EXISTE
             ['name' => 'Administrador', 'description' => 'Administrador del sistema', 'active' => true],
         ];
 

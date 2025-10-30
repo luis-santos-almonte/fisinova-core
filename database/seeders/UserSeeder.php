@@ -1,5 +1,4 @@
 <?php
-// database/seeders/BasicUserSeeder.php (o UserSeeder.php)
 
 namespace Database\Seeders;
 
@@ -20,35 +19,21 @@ class UserSeeder extends Seeder
         $adminRole = Role::where('name', 'admin')->first();
         $medicRole = Role::where('name', 'medic')->first();
         $therapistRole = Role::where('name', 'therapist')->first();
+        $secretaryRole = Role::where('name', 'secretary')->first(); // ✅ NUEVO
 
-        // Get positions - NOMBRES EXACTOS de tu PositionSeeder actual
+        // Get positions
         $adminPosition = Position::where('name', 'Administrador')->first();
-        $medicPosition = Position::where('name', 'Médico')->first(); // ✅ Coincide exacto
-        $therapistPosition = Position::where('name', 'Terapista')->first(); // ✅ Coincide exacto
+        $medicPosition = Position::where('name', 'Médico')->first();
+        $therapistPosition = Position::where('name', 'Terapista')->first();
+        $secretaryPosition = Position::where('name', 'Secretaria')->first(); // ✅ NUEVO
 
         // Verificar que existan
-        if (!$adminRole) {
-            echo "❌ Role 'admin' no encontrado\n";
+        if (!$adminRole || !$medicRole || !$therapistRole || !$secretaryRole) {
+            echo "❌ Faltan roles\n";
             return;
         }
-        if (!$medicRole) {
-            echo "❌ Role 'medic' no encontrado\n";
-            return;
-        }
-        if (!$therapistRole) {
-            echo "❌ Role 'therapist' no encontrado\n";
-            return;
-        }
-        if (!$adminPosition) {
-            echo "❌ Position 'Administrador' no encontrado\n";
-            return;
-        }
-        if (!$medicPosition) {
-            echo "❌ Position 'Médico' no encontrado\n";
-            return;
-        }
-        if (!$therapistPosition) {
-            echo "❌ Position 'Terapista' no encontrado\n";
+        if (!$adminPosition || !$medicPosition || !$therapistPosition || !$secretaryPosition) {
+            echo "❌ Faltan positions\n";
             return;
         }
 
@@ -64,7 +49,7 @@ class UserSeeder extends Seeder
             ]
         );
 
-        $adminEmployee = Employee::updateOrCreate(
+        Employee::updateOrCreate(
             ['user_id' => $admin->id],
             [
                 'user_id' => $admin->id,
@@ -87,7 +72,7 @@ class UserSeeder extends Seeder
             ]
         );
 
-        $medicEmployee = Employee::updateOrCreate(
+        Employee::updateOrCreate(
             ['user_id' => $medic->id],
             [
                 'user_id' => $medic->id,
@@ -110,7 +95,7 @@ class UserSeeder extends Seeder
             ]
         );
 
-        $therapistEmployee = Employee::updateOrCreate(
+        Employee::updateOrCreate(
             ['user_id' => $therapist->id],
             [
                 'user_id' => $therapist->id,
@@ -123,14 +108,39 @@ class UserSeeder extends Seeder
             ]
         );
 
+        // 4. SECRETARY USER ✅ NUEVO
+        $secretary = User::updateOrCreate(
+            ['email' => 'secretary@system.com'],
+            [
+                'name' => 'Maria',
+                'email' => 'secretary@system.com',
+                'password' => Hash::make('admin123'),
+            ]
+        );
+
+        Employee::updateOrCreate(
+            ['user_id' => $secretary->id],
+            [
+                'user_id' => $secretary->id,
+                'position_id' => $secretaryPosition->id,
+                'firstname' => 'Maria',
+                'lastname' => 'Gomez',
+                'dni' => '40200000001',
+                'email' => 'secretary@system.com',
+                'active' => true,
+            ]
+        );
+
         // Assign roles
         $admin->roles()->syncWithoutDetaching([$adminRole->id => ['active' => true]]);
         $medic->roles()->syncWithoutDetaching([$medicRole->id => ['active' => true]]);
         $therapist->roles()->syncWithoutDetaching([$therapistRole->id => ['active' => true]]);
+        $secretary->roles()->syncWithoutDetaching([$secretaryRole->id => ['active' => true]]); // ✅ NUEVO
 
         echo "✅ Usuarios creados exitosamente:\n";
         echo "   - admin@system.com (Admin)\n";
         echo "   - fulanitodoc@system.com (Médico)\n";
         echo "   - layiyi@system.com (Terapista)\n";
+        echo "   - secretary@system.com (Secretaria)\n"; // ✅ NUEVO
     }
 }
