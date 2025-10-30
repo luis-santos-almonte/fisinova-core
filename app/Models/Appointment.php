@@ -4,7 +4,6 @@ namespace App\Models;
 
 use App\Traits\HasActiveScope;
 use App\Traits\HasActiveToggle;
-use Dotenv\Util\Str;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -31,6 +30,7 @@ class Appointment extends Model
         'status',
         'payment_type',
         'authorization_number',
+        'case_number',  // ✅ NUEVO: para riesgo laboral
         'confirmed_at',
         'confirmed_by',
         'type',
@@ -46,6 +46,10 @@ class Appointment extends Model
 
     const TYPE_CONSULTATION = 'consultation';
     const TYPE_THERAPY = 'therapy';
+
+    const PAYMENT_INSURANCE = 'insurance';
+    const PAYMENT_PRIVATE = 'private';
+    const PAYMENT_WORKPLACE_RISK = 'workplace_risk'; // ✅ NUEVO
 
     public function employee()
     {
@@ -82,7 +86,6 @@ class Appointment extends Model
         $this->status = 'confirmada';
         $this->confirmed_at = now();
         $this->confirmed_by = $user->id();
-        $this->authorization_number = $authNumber;
         if ($authNumber) {
             $this->authorization_number = $authNumber;
         }
@@ -109,8 +112,29 @@ class Appointment extends Model
         return $this->type === self::TYPE_THERAPY;
     }
 
+    /**
+     * ✅ NUEVA LÓGICA: Una cita requiere autorización previa si:
+     * - Es terapia Y es por seguro
+     */
     public function requiresPriorAuthorization(): bool
     {
-        return in_array($this->type, [self::TYPE_THERAPY]);
+        return $this->type === self::TYPE_THERAPY &&
+            $this->payment_type === self::PAYMENT_INSURANCE;
+    }
+
+    /**
+     * ✅ NUEVO: Verificar si es riesgo laboral
+     */
+    public function isWorkplaceRisk(): bool
+    {
+        return $this->payment_type === self::PAYMENT_WORKPLACE_RISK;
+    }
+
+    /**
+     * ✅ NUEVO: Verificar si requiere esperar autorización de IDOPPRIL
+     */
+    public function requiresIdopprilAuthorization(): bool
+    {
+        return $this->isConsultation() && $this->isWorkplaceRisk();
     }
 }
