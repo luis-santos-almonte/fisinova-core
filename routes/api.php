@@ -8,6 +8,7 @@ use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\ProcedureController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\InsuranceController;
+use App\Http\Controllers\AuthorizationController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\ScheduleTemplateController;
 use App\Http\Controllers\StaffScheduleController;
@@ -32,6 +33,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('procedures', ProcedureController::class);
     Route::apiResource('employees', EmployeeController::class)->only(['index', 'show']);
     Route::apiResource('insurances', InsuranceController::class)->only(['index', 'show']);
+    Route::apiResource('authorizations', AuthorizationController::class);
+    Route::post('/appointments/{id}/confirm', [AuthorizationController::class, 'confirmAppointment']);
 
     // ========== GESTIÓN DE PERSONAL Y HORARIOS ==========
     Route::apiResource('staff', StaffController::class);
