@@ -24,6 +24,12 @@ class UpdateProcedureRequest extends FormRequest
             'notes' => 'sometimes|string|max:2000',
             'authorization_code' => 'sometimes|string|max:255',
             'dni' => 'sometimes|string|max:20',
+            
+            // CAMPOS OPCIONALES PARA UPDATE
+            'diagnosis_ids' => 'sometimes|array|min:1',
+            'diagnosis_ids.*' => 'integer|exists:diagnostic_standards,id',
+            'procedure_ids' => 'sometimes|array|min:1',
+            'procedure_ids.*' => 'integer|exists:procedure_standards,id',
         ];
     }
 }

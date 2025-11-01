@@ -30,10 +30,14 @@ class Appointment extends Model
         'status',
         'payment_type',
         'authorization_number',
-        'case_number',  // ✅ NUEVO: para riesgo laboral
+        'case_number',
         'confirmed_at',
         'confirmed_by',
         'type',
+        // ✅ NUEVOS CAMPOS
+        'session_number',
+        'total_sessions',
+        'authorization_id',
     ];
 
     protected $casts = [
@@ -49,7 +53,7 @@ class Appointment extends Model
 
     const PAYMENT_INSURANCE = 'insurance';
     const PAYMENT_PRIVATE = 'private';
-    const PAYMENT_WORKPLACE_RISK = 'workplace_risk'; // ✅ NUEVO
+    const PAYMENT_WORKPLACE_RISK = 'workplace_risk';
 
     public function employee()
     {
@@ -76,6 +80,14 @@ class Appointment extends Model
         return $this->hasMany(Authorization::class);
     }
 
+    /**
+     * ✅ NUEVA RELACIÓN: Autorización principal de esta cita de terapia
+     */
+    public function authorization()
+    {
+        return $this->belongsTo(Authorization::class);
+    }
+
     public function confirmedBy()
     {
         return $this->belongsTo(User::class, 'confirmed_by');
@@ -97,6 +109,14 @@ class Appointment extends Model
         return $this->status === 'confirmada';
     }
 
+    /**
+     * ✅ NUEVO: Verificar si es una consulta completada
+     */
+    public function isCompleted(): bool
+    {
+        return $this->status === 'completada';
+    }
+
     public function scopeActive($query)
     {
         return $query->where('active', true);
@@ -113,7 +133,7 @@ class Appointment extends Model
     }
 
     /**
-     * ✅ NUEVA LÓGICA: Una cita requiere autorización previa si:
+     * Una cita requiere autorización previa si:
      * - Es terapia Y es por seguro
      */
     public function requiresPriorAuthorization(): bool
@@ -123,7 +143,7 @@ class Appointment extends Model
     }
 
     /**
-     * ✅ NUEVO: Verificar si es riesgo laboral
+     * Verificar si es riesgo laboral
      */
     public function isWorkplaceRisk(): bool
     {
@@ -131,10 +151,62 @@ class Appointment extends Model
     }
 
     /**
-     * ✅ NUEVO: Verificar si requiere esperar autorización de IDOPPRIL
+     * Verificar si requiere esperar autorización de IDOPPRIL
      */
     public function requiresIdopprilAuthorization(): bool
     {
         return $this->isConsultation() && $this->isWorkplaceRisk();
+    }
+
+    /**
+     * ✅ NUEVO: Verificar si es parte de una serie de terapias
+     */
+    public function isPartOfSeries(): bool
+    {
+        return $this->session_number !== null && $this->total_sessions !== null;
+    }
+
+    /**
+     * ✅ NUEVO: Obtener información de progreso de la serie
+     */
+    public function getSeriesProgress(): ?array
+    {
+        if (!$this->isPartOfSeries()) {
+            return null;
+        }
+
+        return [
+            'current' => $this->session_number,
+            'total' => $this->total_sessions,
+            'percentage' => round(($this->session_number / $this->total_sessions) * 100, 2),
+            'remaining' => $this->total_sessions - $this->session_number,
+        ];
+    }
+
+    /**
+     * ✅ NUEVO: Scope para citas de terapia de una serie específica
+     */
+    public function scopeBySeries($query, int $authorizationId)
+    {
+        return $query->where('authorization_id', $authorizationId)
+            ->orderBy('session_number');
+    }
+
+    /**
+     * ✅ NUEVO: Scope para consultas completadas
+     */
+    public function scopeCompleted($query)
+    {
+        return $query->where('status', 'completada');
+    }
+
+    /**
+     * ✅ NUEVO: Scope para consultas pendientes de autorización
+     */
+    public function scopePendingAuthorization($query)
+    {
+        return $query->where('type', self::TYPE_CONSULTATION)
+            ->where('status', 'completada')
+            ->whereDoesntHave('authorizations');
     }
 }
