@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Staff\StoreStaffRequest;
 use App\Http\Requests\Staff\UpdateStaffRequest;
 use App\Http\Requests\Staff\IndexStaffRequest;
-use App\Models\Staff;
+use App\Models\Employee;  // ✅ CAMBIO: usar Employee
 use App\Services\StaffService;
 use App\Traits\ApiResponse;
 
@@ -32,19 +32,28 @@ class StaffController extends Controller
         return $this->successResponse($staff, 201);
     }
 
-    public function show(Staff $staff)
+    /**
+     * ✅ CAMBIO: usar Employee en el binding
+     */
+    public function show(Employee $staff)
     {
         $staff = $this->staffService->getStaffById($staff->id);
         return $this->successResponse($staff);
     }
 
-    public function update(UpdateStaffRequest $request, Staff $staff)
+    /**
+     * ✅ CAMBIO: usar Employee en el binding
+     */
+    public function update(UpdateStaffRequest $request, Employee $staff)
     {
         $staff = $this->staffService->updateStaff($staff->id, $request->validated());
         return $this->successResponse($staff);
     }
 
-    public function destroy(Staff $staff)
+    /**
+     * ✅ CAMBIO: usar Employee en el binding
+     */
+    public function destroy(Employee $staff)
     {
         $this->staffService->deleteStaff($staff->id);
         return $this->successResponse(null, 204);
