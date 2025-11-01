@@ -1,7 +1,6 @@
 <?php
 
 namespace App\Http\Requests\Staff;
-// namespace App\Http\Requests\StaffSchedule;
 
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -15,13 +14,13 @@ class StoreStaffScheduleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'staff_id' => 'required|integer|exists:staff,id',
+            'staff_id' => 'required|integer|exists:employees,id',  // ✅ CAMBIO: employees
             'schedule_day_id' => 'required|integer|exists:schedule_days,id',
             'cubicle_id' => 'nullable|integer|exists:cubicles,id',
             'assignment_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:assignment_date',
             'is_override' => 'sometimes|boolean',
-            'original_staff_id' => 'nullable|integer|exists:staff,id',
+            'original_staff_id' => 'nullable|integer|exists:employees,id',  // ✅ CAMBIO: employees
             'status' => 'sometimes|string|in:active,cancelled,completed',
             'notes' => 'nullable|string|max:1000',
         ];

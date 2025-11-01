@@ -17,17 +17,20 @@ class UpdateStaffRequest extends FormRequest
         $staffId = $this->route('staff')->id;
 
         return [
-            'first_name' => 'sometimes|string|max:100',
-            'last_name' => 'sometimes|string|max:100',
+            'firstname' => 'sometimes|string|max:100',
+            'lastname' => 'sometimes|string|max:100',
             'email' => [
                 'sometimes',
                 'email',
                 'max:255',
-                Rule::unique('staff')->ignore($staffId)
+                Rule::unique('employees')->ignore($staffId)  // ✅ CAMBIO: employees
             ],
             'phone' => 'sometimes|string|max:20',
+            'cellphone' => 'sometimes|string|max:20',
+            'dni' => 'sometimes|string|max:20',
+            'address' => 'sometimes|string|max:500',
             'position_id' => 'sometimes|integer|exists:positions,id',
-            'is_active' => 'sometimes|boolean',
+            'active' => 'sometimes|boolean',  // ✅ CAMBIO: active
         ];
     }
 }
