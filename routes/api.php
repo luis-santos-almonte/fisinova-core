@@ -16,6 +16,8 @@ use App\Http\Controllers\CubicleController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\DiagnosticStandardController;
 use App\Http\Controllers\ProcedureStandardController;
+use App\Http\Controllers\ConsultationController;
+use App\Http\Controllers\MedicalRecordController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -28,9 +30,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Recursos de citas
     Route::apiResource('appointments', AppointmentController::class);
-
-    // ✅ NUEVO: Completar consulta médica (MÉDICO)
-    Route::post('/appointments/{id}/complete-consultation', [AppointmentController::class, 'completeConsultation']);
 
     // Confirmar llegada del paciente (SECRETARIA)
     Route::post('/appointments/{id}/confirm', [AuthorizationController::class, 'confirmAppointment']);
@@ -45,19 +44,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Recursos de autorizaciones
     Route::apiResource('authorizations', AuthorizationController::class);
 
-    // ✅ NUEVO: Generar citas de terapia automáticamente (SECRETARIA)
-    Route::post(
-        '/authorizations/{authorization}/generate-therapy-appointments',
-        [AuthorizationController::class, 'generateTherapyAppointments']
-    );
-
     // Gestión de personal y horarios
     Route::apiResource('staff', StaffController::class);
     Route::apiResource('schedule-templates', ScheduleTemplateController::class);
     Route::apiResource('staff-schedules', StaffScheduleController::class);
 
     // Recursos auxiliares
-    // Route::apiResource('cubicles', CubicleController::class)->only(['index', 'show']);
     Route::apiResource('positions', PositionController::class)->only(['index', 'show']);
 
     // Horario semanal de un staff
@@ -69,4 +61,22 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::get('procedure-standards', [ProcedureStandardController::class, 'index']);
     Route::get('procedure-standards/{procedureStandard}', [ProcedureStandardController::class, 'show']);
+
+    // ✅ NUEVO: Consultas médicas
+    Route::prefix('consultations')->group(function () {
+        Route::get('/dashboard-stats', [ConsultationController::class, 'getDashboardStats']);
+        Route::post('/{appointmentId}/start', [ConsultationController::class, 'startConsultation']);
+        Route::post('/{appointmentId}/complete', [ConsultationController::class, 'completeConsultation']);
+    });
+
+    // ✅ NUEVO: Registros médicos
+    Route::prefix('medical-records')->group(function () {
+        Route::post('/', [MedicalRecordController::class, 'store']);
+        Route::put('/{medicalRecord}', [MedicalRecordController::class, 'update']);
+        Route::get('/appointment/{appointmentId}', [MedicalRecordController::class, 'getByAppointment']);
+        Route::get('/patient/{patientId}', [MedicalRecordController::class, 'getPatientHistory']);
+    });
+
+    // ✅ NUEVO: Mis citas (para médicos/terapistas)
+    Route::get('/my-appointments', [ConsultationController::class, 'getMyAppointments']);
 });
