@@ -6,6 +6,7 @@ use App\Models\Cubicle;
 use App\Services\CubicleService;
 use App\Traits\ApiResponse;
 
+
 class CubicleController extends Controller
 {
     use ApiResponse;

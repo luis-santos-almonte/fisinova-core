@@ -17,6 +17,8 @@ class DatabaseSeeder extends Seeder
             PatientSeeder::class,
             CubicleSeeder::class,
             ScheduleTemplateSeeder::class,
+            DiagnosesSeeder::class,
+            ProceduresSeeder::class,
         ]);
     }
 }

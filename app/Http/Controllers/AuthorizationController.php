@@ -1,5 +1,4 @@
 <?php
-// app/Http/Controllers/AuthorizationController.php
 
 namespace App\Http\Controllers;
 
@@ -65,5 +64,24 @@ class AuthorizationController extends Controller
         );
         return $this->successResponse($appointment);
     }
-}
 
+    public function authorizeTherapy(Request $request, $appointmentId)
+    {
+        $validated = $request->validate([
+            'authorization_number' => 'required|string|max:255',
+            'authorization_date' => 'nullable|date',
+            'insurance_id' => 'required|integer|exists:insurances,id',
+            'sessions_authorized' => 'required|integer|min:1|max:50',
+            'start_date' => 'nullable|date|after_or_equal:today',
+            'notes' => 'nullable|string',
+        ]);
+
+        $authorization = $this->authorizationService->authorizeTherapySessions(
+            $appointmentId,
+            $validated,
+            $request->user()->id
+        );
+
+        return $this->successResponse($authorization, 201);
+    }
+}
