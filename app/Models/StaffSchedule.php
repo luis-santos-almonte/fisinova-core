@@ -12,13 +12,13 @@ class StaffSchedule extends Model
     public $timestamps = true;
 
     protected $fillable = [
-        'staff_id',
+        'staff_id',  // ✅ Ahora apunta a employees
         'schedule_day_id',
         'cubicle_id',
         'assignment_date',
         'end_date',
         'is_override',
-        'original_staff_id',
+        'original_staff_id',  // ✅ Ahora apunta a employees
         'status',
         'notes',
     ];
@@ -29,9 +29,14 @@ class StaffSchedule extends Model
         'is_override' => 'boolean',
     ];
 
+    // ========== RELACIONES ==========
+    
+    /**
+     * ✅ CAMBIO: staff() ahora devuelve Employee
+     */
     public function staff()
     {
-        return $this->belongsTo(Staff::class);
+        return $this->belongsTo(Employee::class, 'staff_id');
     }
 
     public function scheduleDay()
@@ -44,11 +49,16 @@ class StaffSchedule extends Model
         return $this->belongsTo(Cubicle::class);
     }
 
+    /**
+     * ✅ CAMBIO: originalStaff() ahora devuelve Employee
+     */
     public function originalStaff()
     {
-        return $this->belongsTo(Staff::class, 'original_staff_id');
+        return $this->belongsTo(Employee::class, 'original_staff_id');
     }
 
+    // ========== SCOPES ==========
+    
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
