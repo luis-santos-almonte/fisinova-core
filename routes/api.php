@@ -49,6 +49,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('schedule-templates', ScheduleTemplateController::class);
     Route::apiResource('staff-schedules', StaffScheduleController::class);
 
+    // ✅ Cubículos
+    Route::apiResource('cubicles', CubicleController::class)->only(['index', 'show']);
+
     // Recursos auxiliares
     Route::apiResource('positions', PositionController::class)->only(['index', 'show']);
 
@@ -62,21 +65,24 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('procedure-standards', [ProcedureStandardController::class, 'index']);
     Route::get('procedure-standards/{procedureStandard}', [ProcedureStandardController::class, 'show']);
 
-    // ✅ NUEVO: Consultas médicas
+    // Consultas médicas
     Route::prefix('consultations')->group(function () {
         Route::get('/dashboard-stats', [ConsultationController::class, 'getDashboardStats']);
         Route::post('/{appointmentId}/start', [ConsultationController::class, 'startConsultation']);
         Route::post('/{appointmentId}/complete', [ConsultationController::class, 'completeConsultation']);
     });
 
-    // ✅ NUEVO: Registros médicos
+    // Registros médicos
     Route::prefix('medical-records')->group(function () {
         Route::post('/', [MedicalRecordController::class, 'store']);
         Route::put('/{medicalRecord}', [MedicalRecordController::class, 'update']);
         Route::get('/appointment/{appointmentId}', [MedicalRecordController::class, 'getByAppointment']);
-        Route::get('/patient/{patientId}', [MedicalRecordController::class, 'getPatientHistory']);
+        // ✅ CORREGIDO: Agregada /history al final
+        Route::get('/patient/{patientId}/history', [MedicalRecordController::class, 'getPatientHistory']);
     });
 
-    // ✅ NUEVO: Mis citas (para médicos/terapistas)
+    // Mis citas (para médicos/terapistas)
     Route::get('/my-appointments', [ConsultationController::class, 'getMyAppointments']);
+
+    Route::post('/authorizations/{appointmentId}/authorize-therapy', [AuthorizationController::class, 'authorizeTherapy']);
 });

@@ -44,6 +44,9 @@ class MedicalRecord extends Model
         'prescriptions',
         'recommendations',
         'general_notes',
+        'requires_therapy',
+        'therapy_sessions_needed',
+        'therapy_reason',
         'active',
     ];
 
@@ -57,6 +60,7 @@ class MedicalRecord extends Model
         'has_asthma' => 'boolean',
         'diagnosis_ids' => 'array',
         'procedure_ids' => 'array',
+        'requires_therapy' => 'boolean',
     ];
 
     public function appointment()
