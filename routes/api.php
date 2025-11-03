@@ -16,12 +16,11 @@ use App\Http\Controllers\CubicleController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\RoleController;
-
-// Nuevos controladores de la rama consultation-changes
 use App\Http\Controllers\DiagnosticStandardController;
 use App\Http\Controllers\ProcedureStandardController;
 use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\MedicalRecordController;
+use App\Http\Controllers\TherapyController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -92,4 +91,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('users/{user}/reset-password', [UserController::class, 'resetPassword']);
     Route::get('roles', [RoleController::class, 'index']);
     Route::get('available-employees', [UserController::class, 'availableEmployees']);
+
+     Route::get('/therapies/my-therapies', [TherapyController::class, 'getMyTherapies']);
+    Route::get('/therapies/{appointment}', [TherapyController::class, 'getSession']);
+    Route::post('/therapies/{appointment}/start', [TherapyController::class, 'startSession']);
+    Route::post('/therapies/{appointment}/complete', [TherapyController::class, 'completeSession']);
 });

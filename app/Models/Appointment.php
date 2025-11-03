@@ -2,23 +2,29 @@
 
 namespace App\Models;
 
-use App\Traits\HasActiveScope;
-use App\Traits\HasActiveToggle;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Appointment extends Model
 {
-    use HasFactory, HasActiveScope, HasActiveToggle;
-    public $timestamps = true;
+    use HasFactory;
+
+    const TYPE_CONSULTATION = 'consultation';
+    const TYPE_THERAPY = 'therapy';
+    const PAYMENT_INSURANCE = 'insurance';
+    const PAYMENT_PRIVATE = 'private';
+    const PAYMENT_WORKPLACE_RISK = 'workplace_risk';
 
     protected $fillable = [
         'employee_id',
         'patient_id',
+        'appointment_date',
         'start_time',
         'end_time',
-        'appointment_date',
-        'active',
+        'therapist_id', // ✅ NUEVO
+        'actual_start_time', // ✅ NUEVO
+        'actual_end_time', // ✅ NUEVO
+        'status',
         'notes',
         'dni',
         'phone',
@@ -27,42 +33,42 @@ class Appointment extends Model
         'insurance_id',
         'guest_firstname',
         'guest_lastname',
-        'status',
+        'active',
+        'type',
         'payment_type',
         'authorization_number',
         'case_number',
         'confirmed_at',
         'confirmed_by',
-        'type',
-        // ✅ NUEVOS CAMPOS
+        'authorization_id',
         'session_number',
         'total_sessions',
-        'authorization_id',
     ];
 
     protected $casts = [
         'appointment_date' => 'date',
-        'start_time' => 'datetime:H:i',
-        'end_time' => 'datetime:H:i',
-        'active' => 'boolean',
+        'start_time' => 'datetime:H:i:s',
+        'end_time' => 'datetime:H:i:s',
+        'actual_start_time' => 'datetime:H:i:s', // ✅ NUEVO
+        'actual_end_time' => 'datetime:H:i:s', // ✅ NUEVO
         'confirmed_at' => 'datetime',
+        'active' => 'boolean',
     ];
 
-    const TYPE_CONSULTATION = 'consultation';
-    const TYPE_THERAPY = 'therapy';
-
-    const PAYMENT_INSURANCE = 'insurance';
-    const PAYMENT_PRIVATE = 'private';
-    const PAYMENT_WORKPLACE_RISK = 'workplace_risk';
-
+    /**
+     * Médico referente o que creó la cita
+     */
     public function employee()
     {
         return $this->belongsTo(Employee::class);
     }
 
-    public function insurance()
+    /**
+     * ✅ NUEVA RELACIÓN: Terapista asignado (solo para terapias)
+     */
+    public function therapist()
     {
-        return $this->belongsTo(Insurance::class);
+        return $this->belongsTo(Employee::class, 'therapist_id');
     }
 
     public function patient()
@@ -70,9 +76,14 @@ class Appointment extends Model
         return $this->belongsTo(Patient::class);
     }
 
-    public function procedures()
+    public function insurance()
     {
-        return $this->hasMany(Procedure::class);
+        return $this->belongsTo(Insurance::class);
+    }
+
+    public function medicalRecords()
+    {
+        return $this->hasMany(MedicalRecord::class);
     }
 
     public function authorizations()
@@ -81,16 +92,26 @@ class Appointment extends Model
     }
 
     /**
-     * ✅ NUEVA RELACIÓN: Autorización principal de esta cita de terapia
+     * Autorización principal de esta cita de terapia
      */
     public function authorization()
     {
         return $this->belongsTo(Authorization::class);
     }
 
+    public function procedures()
+    {
+        return $this->hasMany(Procedure::class, 'appointment_id');
+    }
+
     public function confirmedBy()
     {
         return $this->belongsTo(User::class, 'confirmed_by');
+    }
+
+    public function therapyRecord()
+    {
+        return $this->hasOne(TherapyRecord::class);
     }
 
     public function confirm(User $user, ?String $authNumber = null)
@@ -109,12 +130,28 @@ class Appointment extends Model
         return $this->status === 'confirmada';
     }
 
-    /**
-     * ✅ NUEVO: Verificar si es una consulta completada
-     */
     public function isCompleted(): bool
     {
         return $this->status === 'completada';
+    }
+
+    /**
+     * ✅ NUEVO: Marcar hora real de inicio
+     */
+    public function markActualStartTime()
+    {
+        $this->actual_start_time = now()->format('H:i:s');
+        $this->save();
+    }
+
+    /**
+     * ✅ NUEVO: Marcar hora real de fin
+     */
+    public function markActualEndTime()
+    {
+        $this->actual_end_time = now()->format('H:i:s');
+        $this->status = 'completada';
+        $this->save();
     }
 
     public function scopeActive($query)
@@ -127,86 +164,70 @@ class Appointment extends Model
         return $this->type === self::TYPE_CONSULTATION;
     }
 
+
     public function isTherapy(): bool
     {
         return $this->type === self::TYPE_THERAPY;
     }
 
-    /**
-     * Una cita requiere autorización previa si:
-     * - Es terapia Y es por seguro
-     */
     public function requiresPriorAuthorization(): bool
     {
         return $this->type === self::TYPE_THERAPY &&
             $this->payment_type === self::PAYMENT_INSURANCE;
     }
 
-    /**
-     * Verificar si es riesgo laboral
-     */
     public function isWorkplaceRisk(): bool
     {
         return $this->payment_type === self::PAYMENT_WORKPLACE_RISK;
     }
 
     /**
-     * Verificar si requiere esperar autorización de IDOPPRIL
+     * ✅ NUEVO: Obtener el profesional que debe atender la cita
+     * Para consultas: employee
+     * Para terapias: therapist (si existe), sino employee
      */
-    public function requiresIdopprilAuthorization(): bool
+    public function getAttendingProfessional()
     {
-        return $this->isConsultation() && $this->isWorkplaceRisk();
+        if ($this->isTherapy() && $this->therapist_id) {
+            return $this->therapist;
+        }
+        return $this->employee;
     }
 
     /**
-     * ✅ NUEVO: Verificar si es parte de una serie de terapias
+     * ✅ NUEVO: Verificar si hay diferencia entre hora programada y real
      */
-    public function isPartOfSeries(): bool
+    public function hasTimeDifference(): bool
     {
-        return $this->session_number !== null && $this->total_sessions !== null;
+        if (!$this->actual_start_time || !$this->actual_end_time) {
+            return false;
+        }
+
+        return $this->start_time !== $this->actual_start_time ||
+            $this->end_time !== $this->actual_end_time;
     }
 
     /**
-     * ✅ NUEVO: Obtener información de progreso de la serie
+     * ✅ NUEVO: Calcular duración programada (en minutos)
      */
-    public function getSeriesProgress(): ?array
+    public function getScheduledDuration(): int
     {
-        if (!$this->isPartOfSeries()) {
+        $start = \Carbon\Carbon::parse($this->start_time);
+        $end = \Carbon\Carbon::parse($this->end_time);
+        return $end->diffInMinutes($start);
+    }
+
+    /**
+     * ✅ NUEVO: Calcular duración real (en minutos)
+     */
+    public function getActualDuration(): ?int
+    {
+        if (!$this->actual_start_time || !$this->actual_end_time) {
             return null;
         }
 
-        return [
-            'current' => $this->session_number,
-            'total' => $this->total_sessions,
-            'percentage' => round(($this->session_number / $this->total_sessions) * 100, 2),
-            'remaining' => $this->total_sessions - $this->session_number,
-        ];
-    }
-
-    /**
-     * ✅ NUEVO: Scope para citas de terapia de una serie específica
-     */
-    public function scopeBySeries($query, int $authorizationId)
-    {
-        return $query->where('authorization_id', $authorizationId)
-            ->orderBy('session_number');
-    }
-
-    /**
-     * ✅ NUEVO: Scope para consultas completadas
-     */
-    public function scopeCompleted($query)
-    {
-        return $query->where('status', 'completada');
-    }
-
-    /**
-     * ✅ NUEVO: Scope para consultas pendientes de autorización
-     */
-    public function scopePendingAuthorization($query)
-    {
-        return $query->where('type', self::TYPE_CONSULTATION)
-            ->where('status', 'completada')
-            ->whereDoesntHave('authorizations');
+        $start = \Carbon\Carbon::parse($this->actual_start_time);
+        $end = \Carbon\Carbon::parse($this->actual_end_time);
+        return $end->diffInMinutes($start);
     }
 }

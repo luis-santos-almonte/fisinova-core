@@ -146,6 +146,48 @@ class AuthorizationService
         });
     }
 
+    private function createAuthorizationRecord(Appointment $appointment, array $data, int $userId)
+    {
+        $authData = [
+            'appointment_id' => $appointment->id,
+            'patient_id' => $appointment->patient_id,
+            'insurance_id' => $data['insurance_id'] ?? $appointment->insurance_id,
+            'created_by' => $userId,
+            'authorization_number' => $data['authorization_number'],
+            'authorization_date' => $data['authorization_date'] ?? now()->toDateString(),
+            'authorization_type' => 'ambulatoria',
+            'notes' => $data['notes'] ?? null,
+            'active' => true,
+            'patient_name' => $appointment->patient->firstname,
+            'patient_last_name' => $appointment->patient->lastname,
+            'patient_dni' => $appointment->patient->dni,
+            'patient_insurance_code' => $appointment->patient->insurance_code,
+            'patient_gender' => $appointment->patient->sex,
+            'PSS_code' => $appointment->insurance->provider_code ?? null,
+            'city' => 'La Vega',
+            'stablishment_phone' => '809-123-4567',
+            'medic_id' => $appointment->employee_id,
+            'medic_name' => $appointment->employee->firstname . ' ' . $appointment->employee->lastname,
+            'medic_specialty' => 'Fisiatra',
+            'services_authorized' => $data['services_authorized'] ?? [],
+        ];
+
+        return Authorization::create($authData);
+    }
+
+    /**
+     * Autorizar sesiones de terapia desde una consulta completada
+     * 
+     * @param int $appointmentId
+     * @param array $data Debe incluir:
+     *   - authorization_number: string
+     *   - insurance_id: int
+     *   - sessions_authorized: int
+     *   - therapist_id: int (opcional, ID del terapista a asignar)
+     *   - sessions: array de objetos con date, startTime, endTime
+     * @param int $userId
+     * @return Authorization
+     */
     public function authorizeTherapySessions($appointmentId, array $data, $userId)
     {
         return DB::transaction(function () use ($appointmentId, $data, $userId) {
@@ -161,7 +203,7 @@ class AuthorizationService
             }
 
             $medicalRecord = MedicalRecord::where('appointment_id', $appointmentId)->first();
-            
+
             if (!$medicalRecord || !$medicalRecord->requires_therapy) {
                 throw new \Exception('Esta consulta no requiere terapias');
             }
@@ -170,6 +212,15 @@ class AuthorizationService
 
             if ($sessionsAuthorized <= 0) {
                 throw new \Exception('Debe autorizar al menos una sesión');
+            }
+
+            // Validar que se hayan proporcionado las sesiones programadas
+            if (empty($data['sessions']) || !is_array($data['sessions'])) {
+                throw new \Exception('Debe proporcionar las sesiones programadas');
+            }
+
+            if (count($data['sessions']) !== $sessionsAuthorized) {
+                throw new \Exception('El número de sesiones programadas no coincide con las sesiones autorizadas');
             }
 
             // Crear autorización
@@ -201,103 +252,100 @@ class AuthorizationService
 
             $authorization = Authorization::create($authData);
 
-            // Generar citas de terapia
-            $this->generateTherapyAppointments(
+            // Generar citas de terapia con horarios específicos
+            $this->generateTherapyAppointmentsWithSchedule(
                 $appointment,
                 $authorization,
-                $sessionsAuthorized,
-                $data['start_date'] ?? null
+                $data['sessions'],
+                $data['therapist_id'] ?? null
             );
 
-            Log::info('Terapias autorizadas', [
+            Log::info('Terapias autorizadas con horarios específicos', [
                 'appointment_id' => $appointment->id,
                 'authorization_id' => $authorization->id,
                 'sessions' => $sessionsAuthorized,
+                'therapist_id' => $data['therapist_id'] ?? 'mismo médico',
             ]);
 
             return $authorization->load(['therapyAppointments']);
         });
     }
 
-    private function generateTherapyAppointments(
+    /**
+     * Generar citas de terapia con horarios personalizados
+     * 
+     * @param Appointment $consultationAppointment
+     * @param Authorization $authorization
+     * @param array $sessions Array de objetos: [{date, startTime, endTime}]
+     * @param int|null $therapistId ID del terapista a asignar (null = mismo médico)
+     * @return array
+     */
+    private function generateTherapyAppointmentsWithSchedule(
         Appointment $consultationAppointment,
         Authorization $authorization,
-        int $sessions,
-        ?string $startDate = null
+        array $sessions,
+        ?int $therapistId = null
     ) {
-        $startDate = $startDate ? Carbon::parse($startDate) : Carbon::now()->addDays(1);
-        
-        // Asegurar que comience en un día laboral (lunes a viernes)
-        while ($startDate->isWeekend()) {
-            $startDate->addDay();
-        }
-
         $createdAppointments = [];
+        $sessionNumber = 1;
+        $totalSessions = count($sessions);
 
-        for ($i = 1; $i <= $sessions; $i++) {
-            // Crear cita programada
+        // Si no se especifica terapista, usar el mismo médico de la consulta
+        $assignedTherapistId = $therapistId ?? $consultationAppointment->employee_id;
+
+        foreach ($sessions as $session) {
+            // Validar que la sesión tenga los campos requeridos
+            if (empty($session['date']) || empty($session['startTime']) || empty($session['endTime'])) {
+                Log::warning('Sesión omitida por datos incompletos', ['session' => $session]);
+                continue;
+            }
+
+            // Parsear fecha y horas
+            $appointmentDate = Carbon::parse($session['date'])->format('Y-m-d');
+            $startTime = Carbon::parse($session['startTime'])->format('H:i:s');
+            $endTime = Carbon::parse($session['endTime'])->format('H:i:s');
+
+            // Crear cita de terapia
             $therapyAppointment = Appointment::create([
-                'employee_id' => $consultationAppointment->employee_id,
+                'employee_id' => $consultationAppointment->employee_id, // Médico referente
+                'therapist_id' => $assignedTherapistId, // Terapista asignado
                 'patient_id' => $consultationAppointment->patient_id,
-                'appointment_date' => $startDate->format('Y-m-d'),
-                'start_time' => $consultationAppointment->start_time,
-                'end_time' => $consultationAppointment->end_time,
+                'appointment_date' => $appointmentDate,
+                'start_time' => $startTime, // Hora programada
+                'end_time' => $endTime, // Hora programada
+                'actual_start_time' => null, // Se llenará cuando inicie la sesión
+                'actual_end_time' => null, // Se llenará cuando termine la sesión
                 'type' => Appointment::TYPE_THERAPY,
                 'payment_type' => $consultationAppointment->payment_type,
                 'insurance_id' => $consultationAppointment->insurance_id,
                 'authorization_id' => $authorization->id,
                 'authorization_number' => $authorization->authorization_number,
-                'session_number' => $i,
-                'total_sessions' => $sessions,
+                'session_number' => $sessionNumber,
+                'total_sessions' => $totalSessions,
                 'status' => 'programada',
-                'notes' => "Sesión $i de $sessions - Generada automáticamente",
+                'notes' => "Sesión $sessionNumber de $totalSessions - Terapia autorizada",
                 'active' => true,
             ]);
 
             $createdAppointments[] = $therapyAppointment;
+            $sessionNumber++;
 
-            // Avanzar al siguiente día laboral
-            do {
-                $startDate->addDay();
-            } while ($startDate->isWeekend());
+            Log::info('Cita de terapia creada', [
+                'appointment_id' => $therapyAppointment->id,
+                'date' => $appointmentDate,
+                'time' => "$startTime - $endTime",
+                'therapist_id' => $assignedTherapistId,
+                'session' => "$sessionNumber/$totalSessions",
+            ]);
         }
 
-        Log::info('Citas de terapia generadas', [
+        Log::info('Todas las citas de terapia generadas', [
             'authorization_id' => $authorization->id,
-            'total_sessions' => $sessions,
+            'total_sessions' => $totalSessions,
             'appointments_created' => count($createdAppointments),
         ]);
 
         return $createdAppointments;
-    }
-
-    private function createAuthorizationRecord(Appointment $appointment, array $data, int $userId)
-    {
-        $authData = [
-            'appointment_id' => $appointment->id,
-            'patient_id' => $appointment->patient_id,
-            'insurance_id' => $data['insurance_id'] ?? $appointment->insurance_id,
-            'created_by' => $userId,
-            'authorization_number' => $data['authorization_number'],
-            'authorization_date' => $data['authorization_date'] ?? now()->toDateString(),
-            'authorization_type' => 'ambulatoria',
-            'notes' => $data['notes'] ?? null,
-            'active' => true,
-            'patient_name' => $appointment->patient->firstname,
-            'patient_last_name' => $appointment->patient->lastname,
-            'patient_dni' => $appointment->patient->dni,
-            'patient_insurance_code' => $appointment->patient->insurance_code,
-            'patient_gender' => $appointment->patient->sex,
-            'PSS_code' => $appointment->insurance->provider_code ?? null,
-            'city' => 'La Vega',
-            'stablishment_phone' => '809-123-4567',
-            'medic_id' => $appointment->employee_id,
-            'medic_name' => $appointment->employee->firstname . ' ' . $appointment->employee->lastname,
-            'medic_specialty' => 'Fisiatra',
-            'services_authorized' => $data['services_authorized'] ?? [],
-        ];
-
-        return Authorization::create($authData);
     }
 
     public function updateAuthorization($id, array $data)
