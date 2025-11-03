@@ -11,13 +11,13 @@ return new class extends Migration
         if (!Schema::hasTable('staff_schedules')) {
             Schema::create('staff_schedules', function (Blueprint $table) {
                 $table->id();
-                $table->foreignId('staff_id')->constrained('staff')->onDelete('cascade');
+                $table->foreignId('staff_id')->constrained('employees')->onDelete('cascade');
                 $table->foreignId('schedule_day_id')->constrained('schedule_days')->onDelete('cascade');
                 $table->foreignId('cubicle_id')->nullable()->constrained('cubicles')->onDelete('set null');
                 $table->date('assignment_date')->nullable()->comment('NULL para horarios recurrentes');
                 $table->date('end_date')->nullable()->comment('Para asignaciones temporales');
                 $table->boolean('is_override')->default(false)->comment('Si es una suplencia/excepción');
-                $table->foreignId('original_staff_id')->nullable()->constrained('staff')->onDelete('set null')->comment('Para suplencias');
+                $table->foreignId('original_staff_id')->nullable()->constrained('employees')->onDelete('set null')->comment('Para suplencias');
                 $table->string('status', 20)->default('active')->comment('active, cancelled, completed');
                 $table->text('notes')->nullable();
                 $table->timestamps();
