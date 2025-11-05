@@ -44,7 +44,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Recursos de empleados y seguros
     Route::apiResource('employees', EmployeeController::class)->only(['index', 'show']);
-    Route::apiResource('insurances', InsuranceController::class)->only(['index', 'show']);
+    Route::apiResource('insurances', InsuranceController::class);
+    Route::post('insurances/{insurance}/toggle-active', [InsuranceController::class, 'toggleActive']);
+    Route::get('insurances/{insurance}/statistics', [InsuranceController::class, 'statistics']);
 
     // Recursos de autorizaciones
     Route::apiResource('authorizations', AuthorizationController::class);
