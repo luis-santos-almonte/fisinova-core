@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Requests\Insurance;
 
 use Illuminate\Foundation\Http\FormRequest;

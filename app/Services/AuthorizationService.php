@@ -157,6 +157,12 @@ class AuthorizationService
             'authorization_number' => $data['authorization_number'],
             'authorization_date' => $data['authorization_date'] ?? now()->toDateString(),
             'authorization_type' => 'ambulatoria',
+
+            // ✅ AGREGAR: Montos
+            'insurance_amount' => $data['insurance_amount'] ?? 0,
+            'patient_amount' => $data['patient_amount'] ?? 0,
+            'total_amount' => ($data['insurance_amount'] ?? 0) + ($data['patient_amount'] ?? 0),
+
             'notes' => $data['notes'] ?? null,
             'active' => true,
             'patient_name' => $appointment->patient->firstname,
@@ -166,7 +172,7 @@ class AuthorizationService
             'patient_gender' => $appointment->patient->sex,
             'PSS_code' => $appointment->insurance->provider_code ?? null,
             'city' => 'La Vega',
-            'stablishment_phone' => '809-123-4567',
+            'stablishment_phone' => '809-573-5555',
             'medic_id' => $appointment->employee_id,
             'medic_name' => $appointment->employee->firstname . ' ' . $appointment->employee->lastname,
             'medic_specialty' => 'Fisiatra',
@@ -234,6 +240,12 @@ class AuthorizationService
                 'authorization_number' => $data['authorization_number'],
                 'authorization_date' => $data['authorization_date'] ?? now()->toDateString(),
                 'authorization_type' => 'ambulatoria',
+
+                // ✅ AGREGAR: Montos
+                'insurance_amount' => $data['insurance_amount'] ?? 0,
+                'patient_amount' => $data['patient_amount'] ?? 0,
+                'total_amount' => ($data['insurance_amount'] ?? 0) + ($data['patient_amount'] ?? 0),
+
                 'sessions_authorized' => $sessionsAuthorized,
                 'sessions_completed' => 0,
                 'notes' => $data['notes'] ?? $medicalRecord->therapy_reason,
@@ -245,7 +257,7 @@ class AuthorizationService
                 'patient_gender' => $appointment->patient->sex,
                 'city' => 'La Vega',
                 'PSS_code' => $appointment->insurance->provider_code ?? null,
-                'stablishment_phone' => '809-123-4567',
+                'stablishment_phone' => '809-573-5555',
                 'medic_name' => $appointment->employee->firstname . ' ' . $appointment->employee->lastname,
                 'medic_specialty' => 'Fisiatra',
                 'diagnosis_codes' => $medicalRecord->diagnosis_ids ?? [],

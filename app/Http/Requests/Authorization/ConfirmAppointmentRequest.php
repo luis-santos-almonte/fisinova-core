@@ -23,21 +23,27 @@ class ConfirmAppointmentRequest extends FormRequest
         $paymentType = $this->input('payment_type');
         $appointmentType = $this->route('appointment')?->type ?? $this->input('appointment_type');
 
-        // CONSULTA + SEGURO: NO requiere autorización
-        // TERAPIA + SEGURO: SÍ requiere autorización
+        // TERAPIA + SEGURO: requiere autorización Y montos
         if ($paymentType === 'insurance' && $appointmentType === 'therapy') {
             $rules['authorization_number'] = 'required|string|max:255';
             $rules['insurance_id'] = 'required|integer|exists:insurances,id';
             $rules['authorization_date'] = 'nullable|date';
+
+            // ✅ AGREGAR: Montos obligatorios para terapias con seguro
+            $rules['insurance_amount'] = 'required|numeric|min:0';
+            $rules['patient_amount'] = 'required|numeric|min:0';
         } elseif ($paymentType === 'insurance') {
-            // Consulta por seguro: seguro es requerido pero NO autorización
+            // Consulta por seguro: seguro es requerido pero NO autorización ni montos
             $rules['insurance_id'] = 'required|integer|exists:insurances,id';
             $rules['insurance_code'] = 'nullable|string|max:255';
         }
 
-        // RIESGO LABORAL: requiere número de caso (tanto para consulta como terapia)
+        // RIESGO LABORAL: requiere número de caso
         if ($paymentType === 'workplace_risk') {
             $rules['case_number'] = 'required|string|max:255';
+            // ✅ AGREGAR: Montos opcionales para riesgo laboral
+            $rules['insurance_amount'] = 'nullable|numeric|min:0';
+            $rules['patient_amount'] = 'nullable|numeric|min:0';
         }
 
         return $rules;
@@ -66,11 +72,13 @@ class ConfirmAppointmentRequest extends FormRequest
             $appointmentType = $this->route('appointment')?->type ?? $this->input('appointment_type');
 
             // Validar que terapia por seguro siempre tenga autorización
-            if ($appointmentType === 'therapy' && 
-                $paymentType === 'insurance' && 
-                !$this->input('authorization_number')) {
+            if (
+                $appointmentType === 'therapy' &&
+                $paymentType === 'insurance' &&
+                !$this->input('authorization_number')
+            ) {
                 $validator->errors()->add(
-                    'authorization_number', 
+                    'authorization_number',
                     'Las terapias por seguro requieren autorización previa'
                 );
             }

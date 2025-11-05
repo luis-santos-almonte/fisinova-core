@@ -22,6 +22,7 @@ use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\MedicalRecordController;
 use App\Http\Controllers\TherapyController;
 use App\Services\AppointmentService;
+use App\Http\Controllers\InsuranceReportController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -110,4 +111,19 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Rutas de recurso estándar
     Route::apiResource('appointments', AppointmentController::class);
+
+    // ========== REPORTERÍA DE SEGUROS E IDOPPRIL ==========
+    Route::prefix('reports/insurance')->group(function () {
+        // Vista previa de datos (JSON)
+        Route::post('/preview', [InsuranceReportController::class, 'preview']);
+
+        // Generar y descargar directamente (PDF/Excel)
+        Route::post('/download', [InsuranceReportController::class, 'download']);
+
+        // Estadísticas para el módulo de reportería
+        Route::get('/report-stats', [InsuranceReportController::class, 'reportStats']);
+
+        // Estadísticas agrupadas por seguro + IDOPPRIL
+        Route::get('/stats-by-insurance', [InsuranceReportController::class, 'statsByInsurance']);
+    });
 });
