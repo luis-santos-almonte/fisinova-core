@@ -4,6 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
+use App\Models\Employee;
+use App\Models\ScheduleTemplate;
+use App\Models\Cubicle;
+use Exception;
+use Illuminate\Support\Facades\Log;
 
 class StaffSchedule extends Model
 {
@@ -13,14 +19,14 @@ class StaffSchedule extends Model
 
     protected $fillable = [
         'staff_id',
-        'schedule_template_id',       // ✅ NUEVO: Referencia al template completo
-        'selected_days',               // ✅ NUEVO: Array de días seleccionados [1,2,3] o null=todos
+        'schedule_template_id',
+        'selected_days',
         'cubicle_id',
-        'start_date',                  // ✅ RENOMBRADO: Fecha de inicio de vigencia
-        'end_date',                    // Fecha de fin de vigencia
-        'specific_date',               // ✅ NUEVO: Solo para asignaciones puntuales
-        'specific_start_time',         // ✅ NUEVO: Hora inicio para fecha específica
-        'specific_end_time',           // ✅ NUEVO: Hora fin para fecha específica
+        'start_date',
+        'end_date',
+        'specific_date',
+        'specific_start_time',
+        'specific_end_time',
         'is_override',
         'original_staff_id',
         'status',
@@ -31,20 +37,19 @@ class StaffSchedule extends Model
         'start_date' => 'date',
         'end_date' => 'date',
         'specific_date' => 'date',
-        'selected_days' => 'array',    // ✅ Cast automático a array
+        'selected_days' => 'array',
         'is_override' => 'boolean',
+        // ✅ NO castear specific_start_time y specific_end_time
+        // Son TIME en DB, se manejan como string
     ];
 
     // ========== RELACIONES ==========
-    
+
     public function staff()
     {
         return $this->belongsTo(Employee::class, 'staff_id');
     }
 
-    /**
-     * ✅ NUEVO: Relación directa con el template
-     */
     public function scheduleTemplate()
     {
         return $this->belongsTo(ScheduleTemplate::class);
@@ -61,7 +66,7 @@ class StaffSchedule extends Model
     }
 
     // ========== SCOPES ==========
-    
+
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
@@ -78,11 +83,11 @@ class StaffSchedule extends Model
     }
 
     // ========== MÉTODOS AUXILIARES ==========
-    
+
     /**
-     * ✅ Verifica si esta asignación aplica para una fecha dada
+     * Verifica si esta asignación aplica para una fecha dada
      */
-    public function appliesOnDate(\Carbon\Carbon $date): bool
+    public function appliesOnDate(Carbon $date): bool
     {
         // Si es asignación específica, solo aplica ese día
         if ($this->specific_date) {
@@ -93,6 +98,7 @@ class StaffSchedule extends Model
         if ($this->start_date && $date->lt($this->start_date)) {
             return false;
         }
+
         if ($this->end_date && $date->gt($this->end_date)) {
             return false;
         }
@@ -107,9 +113,10 @@ class StaffSchedule extends Model
     }
 
     /**
-     * ✅ Obtiene el horario para un día específico
+     * Obtiene el horario para un día específico
+     * Retorna array con start_time y end_time como strings "HH:mm"
      */
-    public function getScheduleForDate(\Carbon\Carbon $date): ?array
+    public function getScheduleForDate(Carbon $date): ?array
     {
         if (!$this->appliesOnDate($date)) {
             return null;
@@ -118,12 +125,12 @@ class StaffSchedule extends Model
         // Si es asignación específica, retornar horario específico
         if ($this->specific_date) {
             return [
-                'start_time' => $this->specific_start_time,
-                'end_time' => $this->specific_end_time,
+                'start_time' => $this->cleanTime($this->specific_start_time),
+                'end_time' => $this->cleanTime($this->specific_end_time),
             ];
         }
 
-        // Buscar el ScheduleDay correspondiente
+        // Buscar el ScheduleDay correspondiente al día de la semana
         $scheduleDay = $this->scheduleTemplate->scheduleDays()
             ->where('day_of_week', $date->dayOfWeekIso)
             ->first();
@@ -133,8 +140,53 @@ class StaffSchedule extends Model
         }
 
         return [
-            'start_time' => $scheduleDay->start_time,
-            'end_time' => $scheduleDay->end_time,
+            'start_time' => $this->cleanTime($scheduleDay->start_time),
+            'end_time' => $this->cleanTime($scheduleDay->end_time),
         ];
+    }
+
+    /**
+     * Limpia un valor de tiempo para asegurar formato HH:mm
+     */
+    private function cleanTime($time): ?string
+    {
+        if (empty($time)) {
+            return null;
+        }
+
+        // Si ya es string en formato correcto
+        if (is_string($time) && preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $time)) {
+            return substr($time, 0, 5); // Retornar solo HH:mm
+        }
+
+        // Si es objeto Carbon o DateTime
+        if ($time instanceof \Carbon\Carbon || $time instanceof \DateTime) {
+            return $time->format('H:i');
+        }
+
+        // Intentar parsear como último recurso
+        try {
+            return Carbon::parse($time)->format('H:i');
+        } catch (Exception $e) {
+            Log::warning('Could not clean time value', [
+                'time' => $time,
+                'type' => gettype($time),
+                'error' => $e->getMessage()
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Accessors para asegurar que los tiempos específicos se retornen como HH:mm
+     */
+    public function getSpecificStartTimeAttribute($value)
+    {
+        return $this->cleanTime($value);
+    }
+
+    public function getSpecificEndTimeAttribute($value)
+    {
+        return $this->cleanTime($value);
     }
 }

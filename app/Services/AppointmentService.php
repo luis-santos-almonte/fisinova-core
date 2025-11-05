@@ -6,31 +6,41 @@ use App\Models\Appointment;
 use App\Models\StaffSchedule;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use Illuminate\Support\Facades\Log;
 
 class AppointmentService
 {
+    /**
+     * Obtener todas las citas con filtros
+     */
     public function getAllAppointments(array $filters = [])
     {
         $query = Appointment::query();
 
-
+        // Filtro de activo
         if (isset($filters['active'])) {
-            $active = $filters['active'] === 'true' || $filters['active'] === '1';
-            $query->where('active', $active);
+            $query->where('active', filter_var($filters['active'], FILTER_VALIDATE_BOOLEAN));
         }
 
+        // Filtro de rango de fechas
         if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
-            $query->whereBetween('appointment_date', [$filters['start_date'], $filters['end_date']]);
+            $query->whereBetween('appointment_date', [
+                $filters['start_date'],
+                $filters['end_date']
+            ]);
         }
 
+        // Filtro de empleado
         if (!empty($filters['employee_id'])) {
             $query->where('employee_id', $filters['employee_id']);
         }
 
+        // Filtro de paciente
         if (!empty($filters['patient_id'])) {
             $query->where('patient_id', $filters['patient_id']);
         }
 
+        // Filtro de estado
         if (!empty($filters['status'])) {
             $query->where('status', $filters['status']);
         }
@@ -38,36 +48,55 @@ class AppointmentService
         $pagination = $filters['paginate'] ?? 15;
 
         return $query->with(['employee', 'patient', 'insurance'])
-            ->orderBy('appointment_date')
-            ->orderBy('start_time')
+            ->orderBy('appointment_date', 'asc')
+            ->orderBy('start_time', 'asc')
             ->simplePaginate($pagination);
     }
 
-    public function getAppointmentById($id)
+    /**
+     * Obtener cita por ID
+     */
+    public function getAppointmentById(int $id)
     {
-        return Appointment::with(['employee', 'patient', 'insurance', 'procedures'])
-            ->findOrFail($id);
+        return Appointment::with([
+            'employee',
+            'patient',
+            'insurance',
+            'procedures'
+        ])->findOrFail($id);
     }
 
+    /**
+     * Crear nueva cita
+     */
     public function createAppointment(array $data)
     {
         return Appointment::create($data);
     }
 
-    public function updateAppointment($id, array $data)
+    /**
+     * Actualizar cita existente
+     */
+    public function updateAppointment(int $id, array $data)
     {
         $appointment = Appointment::findOrFail($id);
         $appointment->update($data);
-        return $appointment;
+        return $appointment->fresh(['employee', 'patient', 'insurance']);
     }
 
-    public function deleteAppointment($id)
+    /**
+     * Eliminar cita
+     */
+    public function deleteAppointment(int $id)
     {
         $appointment = Appointment::findOrFail($id);
         $appointment->delete();
         return true;
     }
 
+    /**
+     * Obtener disponibilidad del doctor
+     */
     public function getDoctorAvailability(
         int $employeeId,
         string $startDate,
@@ -80,7 +109,7 @@ class AppointmentService
         // Obtener horarios del empleado
         $schedules = StaffSchedule::where('staff_id', $employeeId)
             ->where('status', 'active')
-            ->with('scheduleTemplate.scheduleDays', 'cubicle')
+            ->with(['scheduleTemplate.scheduleDays', 'cubicle'])
             ->where(function ($query) use ($start, $end) {
                 $query->whereBetween('specific_date', [$start, $end])
                     ->orWhere(function ($q) use ($start, $end) {
@@ -101,6 +130,7 @@ class AppointmentService
         $appointments = Appointment::where('employee_id', $employeeId)
             ->whereIn('status', ['programada', 'confirmada'])
             ->whereBetween('appointment_date', [$start, $end])
+            ->select('appointment_date', 'start_time', 'end_time')
             ->get();
 
         $availability = [];
@@ -119,11 +149,20 @@ class AppointmentService
             }
         }
 
-        return $availability;
+        return [
+            'doctor_id' => $employeeId,
+            'date_range' => [
+                'start' => $start->toDateString(),
+                'end' => $end->toDateString(),
+            ],
+            'duration' => $duration,
+            'days' => $availability,
+            'total_available_slots' => collect($availability)->sum('available_count'),
+        ];
     }
 
     /**
-     * ✅ NUEVO: Construye la disponibilidad para un día específico
+     * Construir disponibilidad para un día específico
      */
     private function buildDayAvailability(
         Carbon $date,
@@ -134,90 +173,75 @@ class AppointmentService
         $daySlots = [];
 
         foreach ($schedules as $schedule) {
+            // Verificar si el horario aplica para esta fecha
             if (!$schedule->appliesOnDate($date)) {
                 continue;
             }
 
             $timeInfo = $schedule->getScheduleForDate($date);
 
-            if (!$timeInfo['start_time'] || !$timeInfo['end_time']) {
+            if (empty($timeInfo['start_time']) || empty($timeInfo['end_time'])) {
                 continue;
             }
 
+            // Generar slots disponibles
             $workStart = Carbon::parse($date->format('Y-m-d') . ' ' . $timeInfo['start_time']);
             $workEnd = Carbon::parse($date->format('Y-m-d') . ' ' . $timeInfo['end_time']);
 
-            $slots = $this->generateTimeSlots($workStart, $workEnd, $duration);
+            $currentSlot = $workStart->copy();
 
-            foreach ($slots as &$slot) {
-                $slot['is_available'] = !$this->isSlotOccupied(
-                    $slot['start'],
-                    $slot['end'],
+            while ($currentSlot->copy()->addMinutes($duration)->lte($workEnd)) {
+                $slotEnd = $currentSlot->copy()->addMinutes($duration);
+
+                // Verificar si el slot está ocupado
+                $isAvailable = !$this->isSlotOccupied(
                     $appointments,
-                    $date
+                    $date,
+                    $currentSlot,
+                    $slotEnd
                 );
-                $slot['cubicle'] = $schedule->cubicle?->name;
-            }
 
-            $daySlots = array_merge($daySlots, $slots);
+                $daySlots[] = [
+                    'start_time' => $currentSlot->format('H:i'),
+                    'end_time' => $slotEnd->format('H:i'),
+                    'display' => $currentSlot->format('h:i A') . ' - ' . $slotEnd->format('h:i A'),
+                    'is_available' => $isAvailable,
+                    'cubicle' => $schedule->cubicle?->name,
+                ];
+
+                $currentSlot->addMinutes($duration);
+            }
         }
 
-        usort($daySlots, function ($a, $b) {
-            return $a['start']->timestamp <=> $b['start']->timestamp;
-        });
+        $availableCount = collect($daySlots)->where('is_available', true)->count();
 
         return [
-            'date' => $date->format('Y-m-d'),
-            'day_name' => ucfirst($date->locale('es')->dayName),
-            'day_of_week' => $date->dayOfWeekIso,
+            'date' => $date->toDateString(),
+            'day_name' => $date->locale('es')->dayName,
+            'day_of_week' => $date->dayOfWeek,
             'slots' => $daySlots,
-            'available_count' => count(array_filter($daySlots, fn($s) => $s['is_available'])),
+            'available_count' => $availableCount,
             'total_count' => count($daySlots),
         ];
     }
 
     /**
-     * ✅ NUEVO: Genera slots de tiempo para un rango de horas
+     * Verificar si un slot está ocupado
      */
-    private function generateTimeSlots(Carbon $start, Carbon $end, int $duration): array
+    private function isSlotOccupied($appointments, Carbon $date, Carbon $slotStart, Carbon $slotEnd): bool
     {
-        $slots = [];
-        $current = $start->copy();
+        $dateStr = $date->toDateString();
 
-        while ($current->copy()->addMinutes($duration)->lte($end)) {
-            $slotEnd = $current->copy()->addMinutes($duration);
-
-            $slots[] = [
-                'start' => $current->copy(),
-                'end' => $slotEnd->copy(),
-                'start_time' => $current->format('H:i'),
-                'end_time' => $slotEnd->format('H:i'),
-                'display' => $current->format('H:i') . ' - ' . $slotEnd->format('H:i'),
-                'is_available' => true,
-            ];
-
-            $current->addMinutes($duration);
-        }
-
-        return $slots;
-    }
-
-    /**
-     * ✅ NUEVO: Verifica si un slot está ocupado por una cita
-     */
-    private function isSlotOccupied(Carbon $slotStart, Carbon $slotEnd, $appointments, Carbon $date): bool
-    {
         foreach ($appointments as $appointment) {
-            $appointmentDate = Carbon::parse($appointment->appointment_date);
-
-            if (!$appointmentDate->isSameDay($date)) {
+            if ($appointment->appointment_date !== $dateStr) {
                 continue;
             }
 
-            $appointmentStart = Carbon::parse($appointment->start_time);
-            $appointmentEnd = Carbon::parse($appointment->end_time);
+            $appointmentStart = Carbon::parse($dateStr . ' ' . $appointment->start_time);
+            $appointmentEnd = Carbon::parse($dateStr . ' ' . $appointment->end_time);
 
-            if ($slotStart->lt($appointmentEnd) && $appointmentStart->lt($slotEnd)) {
+            // Verificar solapamiento
+            if ($slotStart->lt($appointmentEnd) && $slotEnd->gt($appointmentStart)) {
                 return true;
             }
         }
@@ -226,7 +250,7 @@ class AppointmentService
     }
 
     /**
-     * ✅ NUEVO: Valida si un horario específico está disponible
+     * Validar slot de tiempo
      */
     public function validateTimeSlot(
         int $employeeId,
@@ -235,114 +259,75 @@ class AppointmentService
         int $duration = 60,
         ?int $excludeAppointmentId = null
     ): array {
-        $slotStart = Carbon::parse($date . ' ' . $time);
-        $slotEnd = $slotStart->copy()->addMinutes($duration);
+        $dateCarbon = Carbon::parse($date);
+        $startTime = Carbon::parse($date . ' ' . $time);
+        $endTime = $startTime->copy()->addMinutes($duration);
 
-        // Verificar que el empleado tenga horario en ese momento
-        $hasSchedule = $this->employeeHasScheduleAt($employeeId, $slotStart);
+        // Verificar citas conflictivas
+        $conflictingAppointment = Appointment::where('employee_id', $employeeId)
+            ->where('appointment_date', $date)
+            ->whereIn('status', ['programada', 'confirmada'])
+            ->when($excludeAppointmentId, function ($query) use ($excludeAppointmentId) {
+                $query->where('id', '!=', $excludeAppointmentId);
+            })
+            ->where(function ($query) use ($time, $endTime) {
+                $query->where(function ($q) use ($time, $endTime) {
+                    $q->where('start_time', '<', $endTime->format('H:i'))
+                        ->where('end_time', '>', $time);
+                });
+            })
+            ->with('patient')
+            ->first();
 
-        if (!$hasSchedule) {
+        if ($conflictingAppointment) {
             return [
                 'is_available' => false,
-                'reason' => 'employee_not_scheduled',
-                'message' => 'El empleado no tiene horario asignado en este momento.',
+                'reason' => 'conflicting_appointment',
+                'message' => 'El horario se solapa con otra cita existente',
+                'conflicting_appointment' => [
+                    'id' => $conflictingAppointment->id,
+                    'time' => $conflictingAppointment->start_time . ' - ' . $conflictingAppointment->end_time,
+                    'patient' => $conflictingAppointment->patient
+                        ? $conflictingAppointment->patient->firstname . ' ' . $conflictingAppointment->patient->lastname
+                        : 'Sin asignar',
+                ],
             ];
-        }
-
-        // Verificar que no haya citas solapadas
-        $query = Appointment::where('employee_id', $employeeId)
-            ->whereIn('status', ['programada', 'confirmada'])
-            ->whereDate('appointment_date', $slotStart->format('Y-m-d'));
-
-        if ($excludeAppointmentId) {
-            $query->where('id', '!=', $excludeAppointmentId);
-        }
-
-        $appointments = $query->get();
-
-        foreach ($appointments as $appointment) {
-            $appointmentStart = Carbon::parse($appointment->start_time);
-            $appointmentEnd = Carbon::parse($appointment->end_time);
-
-            if ($slotStart->lt($appointmentEnd) && $appointmentStart->lt($slotEnd)) {
-                return [
-                    'is_available' => false,
-                    'reason' => 'time_conflict',
-                    'message' => 'Ya existe una cita en este horario.',
-                    'conflicting_appointment' => [
-                        'id' => $appointment->id,
-                        'time' => $appointmentStart->format('H:i') . ' - ' . $appointmentEnd->format('H:i'),
-                    ],
-                ];
-            }
         }
 
         return [
             'is_available' => true,
             'reason' => null,
-            'message' => 'El horario está disponible.',
+            'message' => 'El horario está disponible',
         ];
     }
 
     /**
-     * ✅ NUEVO: Verifica si el empleado tiene horario asignado en un momento específico
-     */
-    private function employeeHasScheduleAt(int $employeeId, Carbon $datetime): bool
-    {
-        $schedules = StaffSchedule::where('staff_id', $employeeId)
-            ->where('status', 'active')
-            ->with('scheduleTemplate.scheduleDays')
-            ->get();
-
-        foreach ($schedules as $schedule) {
-            if (!$schedule->appliesOnDate($datetime)) {
-                continue;
-            }
-
-            $timeInfo = $schedule->getScheduleForDate($datetime);
-
-            if (!$timeInfo['start_time'] || !$timeInfo['end_time']) {
-                continue;
-            }
-
-            $workStart = Carbon::parse($datetime->format('Y-m-d') . ' ' . $timeInfo['start_time']);
-            $workEnd = Carbon::parse($datetime->format('Y-m-d') . ' ' . $timeInfo['end_time']);
-
-            if ($datetime->gte($workStart) && $datetime->lt($workEnd)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * ✅ NUEVO: Obtiene el próximo slot disponible
+     * Obtener siguiente slot disponible
      */
     public function getNextAvailableSlot(
         int $employeeId,
         ?string $fromDate = null,
-        int $duration = 60,
-        int $maxDaysToSearch = 30
+        int $duration = 60
     ): ?array {
         $startDate = $fromDate ? Carbon::parse($fromDate) : Carbon::now();
-        $endDate = $startDate->copy()->addDays($maxDaysToSearch);
+        $endDate = $startDate->copy()->addDays(30);
 
         $availability = $this->getDoctorAvailability(
             $employeeId,
-            $startDate->format('Y-m-d'),
-            $endDate->format('Y-m-d'),
+            $startDate->toDateString(),
+            $endDate->toDateString(),
             $duration
         );
 
-        foreach ($availability as $day) {
+        foreach ($availability['days'] as $day) {
             foreach ($day['slots'] as $slot) {
                 if ($slot['is_available']) {
                     return [
                         'date' => $day['date'],
                         'time' => $slot['start_time'],
                         'end_time' => $slot['end_time'],
-                        'display' => $day['day_name'] . ', ' . $day['date'] . ' ' . $slot['display'],
+                        'display' => Carbon::parse($day['date'])->locale('es')->isoFormat('dddd, D [de] MMMM') .
+                            ' - ' . $slot['display'],
                     ];
                 }
             }

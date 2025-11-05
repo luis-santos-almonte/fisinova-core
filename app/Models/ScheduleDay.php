@@ -22,8 +22,8 @@ class ScheduleDay extends Model
     protected $casts = [
         'is_recurring' => 'boolean',
         'day_of_week' => 'integer',
-        'start_time' => 'datetime:H:i',
-        'end_time' => 'datetime:H:i',
+        // ✅ NO castear start_time y end_time - dejar como string
+        // Las columnas son TIME en DB, Laravel las retorna como string "HH:mm:ss"
     ];
 
     public function scheduleTemplate()
@@ -34,5 +34,23 @@ class ScheduleDay extends Model
     public function staffSchedules()
     {
         return $this->hasMany(StaffSchedule::class);
+    }
+
+    /**
+     * Accessor para obtener solo HH:mm (sin segundos)
+     */
+    public function getStartTimeAttribute($value)
+    {
+        if (!$value) return null;
+        return substr($value, 0, 5); // Retorna solo HH:mm
+    }
+
+    /**
+     * Accessor para obtener solo HH:mm (sin segundos)
+     */
+    public function getEndTimeAttribute($value)
+    {
+        if (!$value) return null;
+        return substr($value, 0, 5); // Retorna solo HH:mm
     }
 }

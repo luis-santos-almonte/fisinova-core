@@ -98,11 +98,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/therapies/{appointment}/start', [TherapyController::class, 'startSession']);
     Route::post('/therapies/{appointment}/complete', [TherapyController::class, 'completeSession']);
 
+    // ========== APPOINTMENTS (CITAS) ==========
     Route::prefix('appointments')->group(function () {
-        // Rutas de disponibilidad
-        Route::get('/availability/{doctorId}', [AppointmentService::class, 'getDoctorAvailability']);
-        Route::post('/validate-slot', [AppointmentService::class, 'validateTimeSlot']);
-        Route::get('/next-available/{doctorId}', [AppointmentService::class, 'getNextAvailableSlot']);
-        Route::get('/availability-summary/{doctorId}', [AppointmentService::class, 'getAvailabilitySummary']);
+        // Rutas de disponibilidad (deben ir ANTES de las rutas de recurso)
+        Route::get('availability/{doctorId}', [AppointmentController::class, 'getDoctorAvailability']);
+        Route::post('validate-slot', [AppointmentController::class, 'validateTimeSlot']);
+        Route::get('next-available/{doctorId}', [AppointmentController::class, 'getNextAvailableSlot']);
     });
+
+    // Rutas de recurso estándar
+    Route::apiResource('appointments', AppointmentController::class);
 });

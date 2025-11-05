@@ -32,6 +32,7 @@ class ConfirmAppointmentRequest extends FormRequest
         } elseif ($paymentType === 'insurance') {
             // Consulta por seguro: seguro es requerido pero NO autorización
             $rules['insurance_id'] = 'required|integer|exists:insurances,id';
+            $rules['insurance_code'] = 'nullable|string|max:255';
         }
 
         // RIESGO LABORAL: requiere número de caso (tanto para consulta como terapia)
@@ -48,6 +49,7 @@ class ConfirmAppointmentRequest extends FormRequest
             'patient_id.exists' => 'El paciente seleccionado no existe',
             'authorization_number.required' => 'El número de autorización es requerido para terapias con seguro',
             'insurance_id.required' => 'Debe seleccionar un seguro médico',
+            'insurance_code.required' => 'El código de seguro es requerido para terapias con seguro',
             'case_number.required' => 'El número de caso es requerido para riesgo laboral',
             'payment_type.required' => 'Debe seleccionar un tipo de pago',
             'payment_type.in' => 'El tipo de pago seleccionado no es válido',
