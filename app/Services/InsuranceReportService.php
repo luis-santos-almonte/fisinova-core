@@ -17,18 +17,18 @@ class InsuranceReportService
     const COMPANY_RNC = '131-66268-4';
     const COMPANY_PHONE = '809-573-5555';
     const COMPANY_CITY = 'La Vega';
-    
+
     /**
      * Generar reporte en el formato solicitado (PDF o Excel)
      */
     public function generateReport(array $filters, string $format = 'pdf')
     {
         $reportData = $this->getReportData($filters);
-        
+
         if ($format === 'pdf') {
             return $this->generatePDF($reportData);
         }
-        
+
         return $this->generateExcel($reportData);
     }
 
@@ -46,7 +46,7 @@ class InsuranceReportService
     protected function getReportData(array $filters)
     {
         $isIdoppril = isset($filters['is_idoppril']) && $filters['is_idoppril'];
-        
+
         // Si es IDOPPRIL, buscar por payment_type
         if ($isIdoppril) {
             $authorizations = $this->getIdopprilAuthorizations($filters);
@@ -61,10 +61,10 @@ class InsuranceReportService
             $insurance = Insurance::findOrFail($filters['insurance_id']);
             $authorizations = $this->getInsuranceAuthorizations($filters);
         }
-        
+
         // Agrupar por paciente y ordenar servicios
         $groupedByPatient = $this->groupAndSortByPatient($authorizations);
-        
+
         // Calcular totales
         $summary = [
             'total_services' => $authorizations->count(),
@@ -75,7 +75,7 @@ class InsuranceReportService
             'therapies_count' => $authorizations->where('service_type', 'therapy')->count(),
             'admissions_count' => $authorizations->where('service_type', 'admission')->count(),
         ];
-        
+
         return [
             'services' => $groupedByPatient,
             'summary' => $summary,
@@ -100,35 +100,40 @@ class InsuranceReportService
      */
     protected function getIdopprilAuthorizations(array $filters)
     {
-        return DB::table('authorizations as auth')
+        $query = DB::table('authorizations as auth')
             ->join('patients as p', 'auth.patient_id', '=', 'p.id')
             ->leftJoin('appointments as app', 'auth.appointment_id', '=', 'app.id')
             ->whereBetween('auth.authorization_date', [$filters['start_date'], $filters['end_date']])
-            ->where('auth.active', true)
-            ->whereNotNull('auth.case_number') // IDOPPRIL siempre tiene case_number
-            ->select([
-                'auth.id',
-                'auth.authorization_date',
-                'auth.authorization_number',
-                'auth.insurance_amount',
-                'auth.patient_amount',
-                'auth.total_amount',
-                'auth.patient_name',
-                'auth.patient_last_name',
-                'auth.case_number',
-                'auth.patient_id',
-                DB::raw("COALESCE(app.type, 'consultation') as service_type"),
-                DB::raw("CASE 
-                    WHEN app.type = 'consultation' THEN 'CONSULTA'
-                    WHEN app.type = 'therapy' THEN 'TERAPIA'
-                    WHEN app.type = 'admission' THEN 'INTERNAMIENTO'
-                    ELSE 'CONSULTA'
-                END as procedure_description")
-            ])
+            ->where('auth.active', true);
+
+        // IDOPPRIL: buscar por case_number O por payment_type
+        $query->where(function ($q) {
+            $q->whereNotNull('auth.case_number')
+                ->orWhere('auth.payment_type', 'workplace_risk');
+        });
+
+        return $query->select([
+            'auth.id',
+            'auth.authorization_date',
+            'auth.authorization_number',
+            'auth.insurance_amount',
+            'auth.patient_amount',
+            'auth.total_amount',
+            'auth.patient_name',
+            'auth.patient_last_name',
+            'auth.case_number',
+            'auth.patient_id',
+            DB::raw("COALESCE(app.type, 'consultation') as service_type"),
+            DB::raw("CASE 
+            WHEN app.type = 'consultation' THEN 'CONSULTA'
+            WHEN app.type = 'therapy' THEN 'TERAPIA'
+            WHEN app.type = 'admission' THEN 'INTERNAMIENTO'
+            ELSE 'CONSULTA'
+        END as procedure_description")
+        ])
             ->orderBy('auth.authorization_date', 'asc')
             ->get();
     }
-
     /**
      * Obtener autorizaciones de un seguro normal
      */
@@ -179,7 +184,7 @@ class InsuranceReportService
                 return $priority[$auth->service_type] ?? 4;
             })->values();
         });
-        
+
         // Aplanar manteniendo el orden
         $flattened = collect();
         foreach ($grouped as $patientServices) {
@@ -187,7 +192,7 @@ class InsuranceReportService
                 $flattened->push($service);
             }
         }
-        
+
         return $flattened;
     }
 
@@ -198,7 +203,7 @@ class InsuranceReportService
     {
         $pdf = Pdf::loadView('reports.insurance-report', $reportData);
         $pdf->setPaper('letter', 'portrait');
-        
+
         return $pdf->download($this->generateFilename($reportData, 'pdf'));
     }
 
@@ -221,7 +226,7 @@ class InsuranceReportService
         $insurance = $reportData['insurance'];
         $insuranceName = str_replace(' ', '_', $insurance->name);
         $date = now()->format('Ymd_His');
-        
+
         return "Reporte_{$insuranceName}_{$date}.{$extension}";
     }
 
@@ -240,7 +245,7 @@ class InsuranceReportService
                 DB::raw('SUM(total_amount) as total_amount'),
             ])
             ->first();
-        
+
         return [
             'current_period_amount' => '$' . number_format($stats->total_amount ?? 0, 2),
             'services_performed' => $stats->total_services ?? 0,

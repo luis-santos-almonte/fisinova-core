@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\InsuranceReportRequest;
+use App\Http\Requests\Insurance\InsuranceReportRequest;
 use App\Services\InsuranceReportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -57,7 +57,11 @@ class InsuranceReportController extends Controller
             return $this->reportService->generateReport($data, $format);
             
         } catch (\Exception $e) {
-
+            Log::error('Error generando reporte', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'filters' => $request->all()
+            ]);
             
             return response()->json([
                 'success' => false,

@@ -19,15 +19,16 @@ class StoreAuthorizationRequest extends FormRequest
             'insurance_id' => 'nullable|integer|exists:insurances,id',
             'authorization_number' => 'required|string|max:255|unique:authorizations,authorization_number',
             'authorization_date' => 'required|date',
-            'expiration_date' => 'nullable|date|after_or_equal:authorization_date',
-            'authorization_type' => 'sometimes|in:initial,additional,extension',
+            'authorization_type' => 'sometimes|in:ambulatoria,hospitalizacion',
+            
+            // ✅ NUEVO: Montos
+            'insurance_amount' => 'required|numeric|min:0',
+            'patient_amount' => 'required|numeric|min:0',
+            'total_amount' => 'nullable|numeric|min:0',
+            
             'notes' => 'nullable|string|max:2000',
             'services_authorized' => 'nullable|array',
-            
-            // ✅ NUEVO: Campos para manejo de sesiones de terapia
-            'sessions_authorized' => 'nullable|integer|min:1|max:100',
             'diagnosis_codes' => 'nullable|array',
-            'diagnosis_codes.*' => 'string|max:50',
         ];
     }
 
@@ -39,8 +40,18 @@ class StoreAuthorizationRequest extends FormRequest
             'authorization_number.required' => 'El número de autorización es requerido',
             'authorization_number.unique' => 'Este número de autorización ya existe',
             'authorization_date.required' => 'La fecha de autorización es requerida',
-            'sessions_authorized.min' => 'Debe autorizar al menos 1 sesión',
-            'sessions_authorized.max' => 'No puede autorizar más de 100 sesiones',
+            'insurance_amount.required' => 'El monto del seguro es requerido',
+            'patient_amount.required' => 'El copago del paciente es requerido',
         ];
+    }
+
+    protected function prepareForValidation()
+    {
+        // Calcular total automáticamente si no viene
+        if (!$this->has('total_amount')) {
+            $this->merge([
+                'total_amount' => ($this->insurance_amount ?? 0) + ($this->patient_amount ?? 0)
+            ]);
+        }
     }
 }
