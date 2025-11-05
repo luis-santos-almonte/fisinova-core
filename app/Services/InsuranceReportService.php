@@ -8,25 +8,23 @@ use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\InsuranceReportExport;
+use Carbon\Carbon;
 
 class InsuranceReportService
 {
     // Datos de la empresa
     const COMPANY_NAME = 'Centro de Rehabilitación Física Fisinova';
     const COMPANY_RNC = '131-66268-4';
-    const COMPANY_PHONE = '809-123-4567';
+    const COMPANY_PHONE = '809-573-5555';
     const COMPANY_CITY = 'La Vega';
     
     /**
      * Generar reporte en el formato solicitado (PDF o Excel)
-     * NO SE GUARDA - se genera en tiempo real
      */
     public function generateReport(array $filters, string $format = 'pdf')
     {
-        // Obtener datos del reporte
         $reportData = $this->getReportData($filters);
         
-        // Generar según formato
         if ($format === 'pdf') {
             return $this->generatePDF($reportData);
         }
@@ -47,16 +45,23 @@ class InsuranceReportService
      */
     protected function getReportData(array $filters)
     {
-        $insurance = Insurance::findOrFail($filters['insurance_id']);
-        $isWorkplaceRisk = in_array($insurance->code, ['ARL', 'IDOPPRIL']);
+        $isIdoppril = isset($filters['is_idoppril']) && $filters['is_idoppril'];
         
-        // Obtener autorizaciones del período
-        $authorizations = Authorization::forReport(
-            $filters['insurance_id'],
-            $filters['start_date'],
-            $filters['end_date']
-        )->get();
-
+        // Si es IDOPPRIL, buscar por payment_type
+        if ($isIdoppril) {
+            $authorizations = $this->getIdopprilAuthorizations($filters);
+            $insurance = (object)[
+                'id' => 0,
+                'name' => 'IDOPPRIL',
+                'code' => 'IDOPPRIL',
+                'provider_code' => 'IDOP001',
+            ];
+        } else {
+            // Buscar por insurance_id normal
+            $insurance = Insurance::findOrFail($filters['insurance_id']);
+            $authorizations = $this->getInsuranceAuthorizations($filters);
+        }
+        
         // Agrupar por paciente y ordenar servicios
         $groupedByPatient = $this->groupAndSortByPatient($authorizations);
         
@@ -75,7 +80,8 @@ class InsuranceReportService
             'services' => $groupedByPatient,
             'summary' => $summary,
             'insurance' => $insurance,
-            'is_workplace_risk' => $isWorkplaceRisk,
+            'is_workplace_risk' => $isIdoppril,
+            'is_idoppril' => $isIdoppril,
             'period' => [
                 'start' => $filters['start_date'],
                 'end' => $filters['end_date'],
@@ -90,13 +96,80 @@ class InsuranceReportService
     }
 
     /**
+     * Obtener autorizaciones de IDOPPRIL (riesgo laboral)
+     */
+    protected function getIdopprilAuthorizations(array $filters)
+    {
+        return DB::table('authorizations as auth')
+            ->join('patients as p', 'auth.patient_id', '=', 'p.id')
+            ->leftJoin('appointments as app', 'auth.appointment_id', '=', 'app.id')
+            ->whereBetween('auth.authorization_date', [$filters['start_date'], $filters['end_date']])
+            ->where('auth.active', true)
+            ->whereNotNull('auth.case_number') // IDOPPRIL siempre tiene case_number
+            ->select([
+                'auth.id',
+                'auth.authorization_date',
+                'auth.authorization_number',
+                'auth.insurance_amount',
+                'auth.patient_amount',
+                'auth.total_amount',
+                'auth.patient_name',
+                'auth.patient_last_name',
+                'auth.case_number',
+                'auth.patient_id',
+                DB::raw("COALESCE(app.type, 'consultation') as service_type"),
+                DB::raw("CASE 
+                    WHEN app.type = 'consultation' THEN 'CONSULTA'
+                    WHEN app.type = 'therapy' THEN 'TERAPIA'
+                    WHEN app.type = 'admission' THEN 'INTERNAMIENTO'
+                    ELSE 'CONSULTA'
+                END as procedure_description")
+            ])
+            ->orderBy('auth.authorization_date', 'asc')
+            ->get();
+    }
+
+    /**
+     * Obtener autorizaciones de un seguro normal
+     */
+    protected function getInsuranceAuthorizations(array $filters)
+    {
+        return DB::table('authorizations as auth')
+            ->join('patients as p', 'auth.patient_id', '=', 'p.id')
+            ->leftJoin('appointments as app', 'auth.appointment_id', '=', 'app.id')
+            ->where('auth.insurance_id', $filters['insurance_id'])
+            ->whereBetween('auth.authorization_date', [$filters['start_date'], $filters['end_date']])
+            ->where('auth.active', true)
+            ->select([
+                'auth.id',
+                'auth.authorization_date',
+                'auth.authorization_number',
+                'auth.insurance_amount',
+                'auth.patient_amount',
+                'auth.total_amount',
+                'auth.patient_name',
+                'auth.patient_last_name',
+                'auth.patient_insurance_code',
+                'auth.patient_id',
+                DB::raw("COALESCE(app.type, 'consultation') as service_type"),
+                DB::raw("CASE 
+                    WHEN app.type = 'consultation' THEN 'CONSULTA'
+                    WHEN app.type = 'therapy' THEN 'TERAPIA'
+                    WHEN app.type = 'admission' THEN 'INTERNAMIENTO'
+                    ELSE 'CONSULTA'
+                END as procedure_description")
+            ])
+            ->orderBy('auth.authorization_date', 'asc')
+            ->get();
+    }
+
+    /**
      * Agrupar por paciente y ordenar:
      * Prioridad: Consulta -> Internamiento -> Terapia
      */
     protected function groupAndSortByPatient($authorizations)
     {
         $grouped = $authorizations->groupBy('patient_id')->map(function ($patientAuths) {
-            // Ordenar servicios por prioridad
             return $patientAuths->sortBy(function ($auth) {
                 $priority = [
                     'consultation' => 1,
@@ -126,7 +199,7 @@ class InsuranceReportService
         $pdf = Pdf::loadView('reports.insurance-report', $reportData);
         $pdf->setPaper('letter', 'portrait');
         
-        return $pdf->download($this->generateFilename($reportData['insurance'], 'pdf'));
+        return $pdf->download($this->generateFilename($reportData, 'pdf'));
     }
 
     /**
@@ -136,15 +209,16 @@ class InsuranceReportService
     {
         return Excel::download(
             new InsuranceReportExport($reportData),
-            $this->generateFilename($reportData['insurance'], 'xlsx')
+            $this->generateFilename($reportData, 'xlsx')
         );
     }
 
     /**
      * Generar nombre de archivo
      */
-    protected function generateFilename($insurance, $extension)
+    protected function generateFilename($reportData, $extension)
     {
+        $insurance = $reportData['insurance'];
         $insuranceName = str_replace(' ', '_', $insurance->name);
         $date = now()->format('Ymd_His');
         
@@ -152,9 +226,9 @@ class InsuranceReportService
     }
 
     /**
-     * Obtener estadísticas para el dashboard
+     * Obtener estadísticas para reportería
      */
-    public function getStats($startDate, $endDate)
+    public function getReportStats($startDate, $endDate)
     {
         $stats = Authorization::whereBetween('authorization_date', [$startDate, $endDate])
             ->where('active', true)
@@ -168,7 +242,7 @@ class InsuranceReportService
             ->first();
         
         return [
-            'current_month_amount' => '$' . number_format($stats->total_amount ?? 0, 2),
+            'current_period_amount' => '$' . number_format($stats->total_amount ?? 0, 2),
             'services_performed' => $stats->total_services ?? 0,
             'patients_attended' => $stats->total_patients ?? 0,
             'insurance_amount' => '$' . number_format($stats->total_insurance_amount ?? 0, 2),
@@ -177,26 +251,48 @@ class InsuranceReportService
     }
 
     /**
-     * Obtener estadísticas por seguro
+     * Obtener estadísticas por seguro + IDOPPRIL
      */
     public function getStatsByInsurance($startDate, $endDate)
     {
-        return Authorization::with('insurance')
+        // Estadísticas de seguros normales
+        $insuranceStats = Authorization::with('insurance')
+            ->whereNotNull('insurance_id')
             ->whereBetween('authorization_date', [$startDate, $endDate])
             ->where('active', true)
             ->select([
                 'insurance_id',
                 DB::raw('COUNT(*) as total_services'),
-                DB::raw('SUM(insurance_amount) as total_amount'),
+                DB::raw('SUM(total_amount) as total_amount'),
             ])
             ->groupBy('insurance_id')
             ->get()
             ->map(function ($stat) {
                 return [
-                    'insurance_name' => $stat->insurance->name,
+                    'insurance_name' => $stat->insurance->name ?? 'Desconocido',
                     'total_services' => $stat->total_services,
                     'total_amount' => '$' . number_format($stat->total_amount, 2),
                 ];
             });
+
+        // Estadísticas de IDOPPRIL (riesgo laboral)
+        $idopprilStats = Authorization::whereNotNull('case_number')
+            ->whereBetween('authorization_date', [$startDate, $endDate])
+            ->where('active', true)
+            ->select([
+                DB::raw('COUNT(*) as total_services'),
+                DB::raw('SUM(total_amount) as total_amount'),
+            ])
+            ->first();
+
+        if ($idopprilStats && $idopprilStats->total_services > 0) {
+            $insuranceStats->push([
+                'insurance_name' => 'IDOPPRIL (Riesgo Laboral)',
+                'total_services' => $idopprilStats->total_services,
+                'total_amount' => '$' . number_format($idopprilStats->total_amount, 2),
+            ]);
+        }
+
+        return $insuranceStats;
     }
 }

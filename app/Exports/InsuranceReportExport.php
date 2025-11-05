@@ -2,20 +2,11 @@
 
 namespace App\Exports;
 
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithStyles;
+use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithTitle;
-use Maatwebsite\Excel\Concerns\WithColumnWidths;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 
-class InsuranceReportExport implements 
-    FromCollection, 
-    WithHeadings, 
-    WithStyles, 
-    WithTitle,
-    WithColumnWidths
+class InsuranceReportExport implements FromArray, WithTitle, ShouldAutoSize
 {
     protected $reportData;
 
@@ -24,28 +15,40 @@ class InsuranceReportExport implements
         $this->reportData = $reportData;
     }
 
-    public function collection()
+    /**
+     * Retornar datos como array simple
+     */
+    public function array(): array
     {
-        $rows = collect();
+        $rows = [];
         $insurance = $this->reportData['insurance'];
         $company = $this->reportData['company'];
-        $isWorkplaceRisk = $this->reportData['is_workplace_risk'];
+        $isIdoppril = $this->reportData['is_idoppril'] ?? false;
         
         // Cabecera del reporte
-        $rows->push(['RECLAMACION POR SERVICIO PRESTADO A ' . strtoupper($insurance->name)]);
-        $rows->push(['']);
-        $rows->push(['NOMBRE DEL ESTABLECIMIENTO:', $company['name']]);
-        $rows->push(['RNC:', $company['rnc']]);
-        $rows->push(['CODIGO PSS:', $insurance->provider_code ?? 'N/A']);
-        $rows->push(['CIUDAD:', $company['city']]);
-        $rows->push(['TELEFONO:', $company['phone']]);
-        $rows->push(['FECHA:', now()->format('d/m/Y')]);
-        $rows->push(['']);
+        if ($isIdoppril) {
+            $rows[] = ['RECLAMACION POR SERVICIO PRESTADO A IDOPPRIL'];
+        } else {
+            $rows[] = ['RECLAMACION POR SERVICIO PRESTADO A ' . strtoupper($insurance->name)];
+        }
+        
+        $rows[] = [];
+        $rows[] = ['NOMBRE DEL ESTABLECIMIENTO:', $company['name']];
+        $rows[] = ['RNC:', $company['rnc']];
+        
+        if (!$isIdoppril) {
+            $rows[] = ['CODIGO PSS:', $insurance->provider_code ?? 'N/A'];
+        }
+        
+        $rows[] = ['CIUDAD:', $company['city']];
+        $rows[] = ['TELEFONO:', $company['phone']];
+        $rows[] = ['FECHA:', now()->format('d/m/Y')];
+        $rows[] = [];
         
         // Cabeceras de tabla
         $headers = ['#', 'FECHA', 'NOMBRE DEL AFILIADO'];
         
-        if ($isWorkplaceRisk) {
+        if ($isIdoppril) {
             $headers[] = 'NO. CASO';
         } else {
             $headers[] = 'NO. AFILIADO';
@@ -54,12 +57,12 @@ class InsuranceReportExport implements
         $headers = array_merge($headers, [
             'NO. AUTORIZACION',
             'PROCEDIMIENTO',
-            'MONTO SEGURO',
+            $isIdoppril ? 'MONTO IDOPPRIL' : 'MONTO SEGURO',
             'COPAGO PACIENTE',
             'MONTO TOTAL'
         ]);
         
-        $rows->push($headers);
+        $rows[] = $headers;
         
         // Datos de servicios
         $index = 1;
@@ -70,10 +73,10 @@ class InsuranceReportExport implements
                 $service->patient_name . ' ' . $service->patient_last_name,
             ];
             
-            if ($isWorkplaceRisk) {
+            if ($isIdoppril) {
                 $row[] = $service->case_number ?? 'N/A';
             } else {
-                $row[] = $service->patient_insurance_code;
+                $row[] = $service->patient_insurance_code ?? 'N/A';
             }
             
             $row = array_merge($row, [
@@ -84,60 +87,27 @@ class InsuranceReportExport implements
                 '$' . number_format($service->total_amount, 2),
             ]);
             
-            $rows->push($row);
+            $rows[] = $row;
         }
         
         // Totales
         $summary = $this->reportData['summary'];
-        $rows->push([
+        $rows[] = [
             '', '', '', '', '', 'TOTAL',
             '$' . number_format($summary['total_insurance_amount'], 2),
             '$' . number_format($summary['total_patient_amount'], 2),
             '$' . number_format($summary['total_amount'], 2),
-        ]);
+        ];
         
         return $rows;
     }
 
-    public function headings(): array
-    {
-        return [];
-    }
-
-    public function styles(Worksheet $sheet)
-    {
-        return [
-            1 => [
-                'font' => ['bold' => true, 'size' => 14],
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-            ],
-            10 => [
-                'font' => ['bold' => true],
-                'fill' => [
-                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                    'startColor' => ['rgb' => 'E8E8E8']
-                ],
-            ],
-        ];
-    }
-
-    public function columnWidths(): array
-    {
-        return [
-            'A' => 5,
-            'B' => 12,
-            'C' => 30,
-            'D' => 15,
-            'E' => 15,
-            'F' => 20,
-            'G' => 15,
-            'H' => 15,
-            'I' => 15,
-        ];
-    }
-
     public function title(): string
     {
+        if ($this->reportData['is_idoppril'] ?? false) {
+            return 'IDOPPRIL';
+        }
+        
         return strtoupper($this->reportData['insurance']->name);
     }
 }

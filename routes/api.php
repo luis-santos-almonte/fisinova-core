@@ -110,17 +110,18 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Rutas de recurso estándar
     Route::apiResource('appointments', AppointmentController::class);
 
-    Route::prefix('reports')->group(function () {
-        // Vista previa de datos
-        Route::post('/insurance/preview', [InsuranceReportController::class, 'preview']);
+    // ========== REPORTERÍA DE SEGUROS E IDOPPRIL ==========
+    Route::prefix('reports/insurance')->group(function () {
+        // Vista previa de datos (JSON)
+        Route::post('/preview', [InsuranceReportController::class, 'preview']);
 
-        // Generar y descargar directamente (PDF o Excel)
-        Route::post('/insurance/download', [InsuranceReportController::class, 'download']);
+        // Generar y descargar directamente (PDF/Excel)
+        Route::post('/download', [InsuranceReportController::class, 'download']);
 
-        // Estadísticas para el dashboard
-        Route::get('/insurance/stats', [InsuranceReportController::class, 'stats']);
+        // Estadísticas para el módulo de reportería
+        Route::get('/report-stats', [InsuranceReportController::class, 'reportStats']);
 
-        // Estadísticas por seguro
-        Route::get('/insurance/stats-by-insurance', [InsuranceReportController::class, 'statsByInsurance']);
+        // Estadísticas agrupadas por seguro + IDOPPRIL
+        Route::get('/stats-by-insurance', [InsuranceReportController::class, 'statsByInsurance']);
     });
 });

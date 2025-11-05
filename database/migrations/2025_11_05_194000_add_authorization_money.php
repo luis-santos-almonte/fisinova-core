@@ -15,7 +15,6 @@ return new class extends Migration
             $table->decimal('total_amount', 10, 2)->default(0)->after('patient_amount');
             
             // Índices para reportes financieros
-            $table->index(['insurance_id', 'authorization_date']);
             $table->index(['insurance_amount', 'created_at']);
         });
     }
@@ -23,7 +22,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('authorizations', function (Blueprint $table) {
-            $table->dropIndex(['insurance_id', 'authorization_date']);
             $table->dropIndex(['insurance_amount', 'created_at']);
             
             $table->dropColumn([
