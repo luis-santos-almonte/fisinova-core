@@ -22,6 +22,7 @@ use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\MedicalRecordController;
 use App\Http\Controllers\TherapyController;
 use App\Services\AppointmentService;
+use App\Http\Controllers\InsuranceReportController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -108,4 +109,18 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Rutas de recurso estándar
     Route::apiResource('appointments', AppointmentController::class);
+
+    Route::prefix('reports')->group(function () {
+        // Vista previa de datos
+        Route::post('/insurance/preview', [InsuranceReportController::class, 'preview']);
+
+        // Generar y descargar directamente (PDF o Excel)
+        Route::post('/insurance/download', [InsuranceReportController::class, 'download']);
+
+        // Estadísticas para el dashboard
+        Route::get('/insurance/stats', [InsuranceReportController::class, 'stats']);
+
+        // Estadísticas por seguro
+        Route::get('/insurance/stats-by-insurance', [InsuranceReportController::class, 'statsByInsurance']);
+    });
 });
