@@ -40,18 +40,18 @@ class StaffScheduleService
             $query->where(function ($q) use ($date) {
                 // Asignaciones específicas para esa fecha
                 $q->where('specific_date', $date)
-                  // O asignaciones recurrentes vigentes
-                  ->orWhere(function ($sq) use ($date) {
-                      $sq->whereNull('specific_date')
-                         ->where(function ($dateQ) use ($date) {
-                             $dateQ->whereNull('start_date')
-                                   ->orWhere('start_date', '<=', $date);
-                         })
-                         ->where(function ($dateQ) use ($date) {
-                             $dateQ->whereNull('end_date')
-                                   ->orWhere('end_date', '>=', $date);
-                         });
-                  });
+                    // O asignaciones recurrentes vigentes
+                    ->orWhere(function ($sq) use ($date) {
+                        $sq->whereNull('specific_date')
+                            ->where(function ($dateQ) use ($date) {
+                                $dateQ->whereNull('start_date')
+                                    ->orWhere('start_date', '<=', $date);
+                            })
+                            ->where(function ($dateQ) use ($date) {
+                                $dateQ->whereNull('end_date')
+                                    ->orWhere('end_date', '>=', $date);
+                            });
+                    });
             });
         }
 
@@ -120,14 +120,16 @@ class StaffScheduleService
             $staffSchedule = StaffSchedule::findOrFail($id);
 
             // Validar conflictos si se cambian datos relevantes
-            if (isset($data['staff_id']) || isset($data['schedule_template_id']) || 
+            if (
+                isset($data['staff_id']) || isset($data['schedule_template_id']) ||
                 isset($data['start_date']) || isset($data['selected_days']) ||
-                isset($data['specific_date'])) {
+                isset($data['specific_date'])
+            ) {
                 $this->validateScheduleConflict($data, $id);
             }
 
             $staffSchedule->update($data);
-            
+
             return $staffSchedule->load([
                 'staff.position',
                 'scheduleTemplate.scheduleDays',
@@ -163,56 +165,56 @@ class StaffScheduleService
             $query->where(function ($q) use ($data) {
                 // Conflicto con otra asignación específica el mismo día
                 $q->where('specific_date', $data['specific_date'])
-                  // O con asignación recurrente que aplique ese día
-                  ->orWhere(function ($sq) use ($data) {
-                      $specificDate = Carbon::parse($data['specific_date']);
-                      $dayOfWeek = $specificDate->dayOfWeekIso;
-                      
-                      $sq->whereNull('specific_date')
-                         ->where(function ($dateQ) use ($specificDate) {
-                             $dateQ->whereNull('start_date')
-                                   ->orWhere('start_date', '<=', $specificDate);
-                         })
-                         ->where(function ($dateQ) use ($specificDate) {
-                             $dateQ->whereNull('end_date')
-                                   ->orWhere('end_date', '>=', $specificDate);
-                         })
-                         ->where(function ($dayQ) use ($dayOfWeek) {
-                             $dayQ->whereNull('selected_days')
-                                  ->orWhereJsonContains('selected_days', $dayOfWeek);
-                         });
-                  });
+                    // O con asignación recurrente que aplique ese día
+                    ->orWhere(function ($sq) use ($data) {
+                        $specificDate = Carbon::parse($data['specific_date']);
+                        $dayOfWeek = $specificDate->dayOfWeekIso;
+
+                        $sq->whereNull('specific_date')
+                            ->where(function ($dateQ) use ($specificDate) {
+                                $dateQ->whereNull('start_date')
+                                    ->orWhere('start_date', '<=', $specificDate);
+                            })
+                            ->where(function ($dateQ) use ($specificDate) {
+                                $dateQ->whereNull('end_date')
+                                    ->orWhere('end_date', '>=', $specificDate);
+                            })
+                            ->where(function ($dayQ) use ($dayOfWeek) {
+                                $dayQ->whereNull('selected_days')
+                                    ->orWhereJsonContains('selected_days', $dayOfWeek);
+                            });
+                    });
             });
         }
         // Si es asignación recurrente
         else {
             $templateId = $data['schedule_template_id'];
             $selectedDays = $data['selected_days'] ?? null;
-            
+
             $query->where('schedule_template_id', $templateId)
-                  ->where(function ($q) use ($selectedDays) {
-                      // Conflicto si los días se solapan
-                      if ($selectedDays && !empty($selectedDays)) {
-                          $q->whereNull('selected_days')
+                ->where(function ($q) use ($selectedDays) {
+                    // Conflicto si los días se solapan
+                    if ($selectedDays && !empty($selectedDays)) {
+                        $q->whereNull('selected_days')
                             ->orWhere(function ($sq) use ($selectedDays) {
                                 foreach ($selectedDays as $day) {
                                     $sq->orWhereJsonContains('selected_days', $day);
                                 }
                             });
-                      }
-                  });
+                    }
+                });
 
             // Verificar solapamiento de fechas
             if (!empty($data['start_date'])) {
                 $query->where(function ($q) use ($data) {
                     $q->whereNull('end_date')
-                      ->orWhere('end_date', '>=', $data['start_date']);
+                        ->orWhere('end_date', '>=', $data['start_date']);
                 });
             }
             if (!empty($data['end_date'])) {
                 $query->where(function ($q) use ($data) {
                     $q->whereNull('start_date')
-                      ->orWhere('start_date', '<=', $data['end_date']);
+                        ->orWhere('start_date', '<=', $data['end_date']);
                 });
             }
         }
@@ -236,18 +238,18 @@ class StaffScheduleService
             ->where(function ($query) use ($startDate, $endDate) {
                 // Asignaciones específicas en la semana
                 $query->whereBetween('specific_date', [$startDate, $endDate])
-                      // O asignaciones recurrentes vigentes
-                      ->orWhere(function ($q) use ($startDate, $endDate) {
-                          $q->whereNull('specific_date')
+                    // O asignaciones recurrentes vigentes
+                    ->orWhere(function ($q) use ($startDate, $endDate) {
+                        $q->whereNull('specific_date')
                             ->where(function ($dateQ) use ($endDate) {
                                 $dateQ->whereNull('start_date')
-                                      ->orWhere('start_date', '<=', $endDate);
+                                    ->orWhere('start_date', '<=', $endDate);
                             })
                             ->where(function ($dateQ) use ($startDate) {
                                 $dateQ->whereNull('end_date')
-                                      ->orWhere('end_date', '>=', $startDate);
+                                    ->orWhere('end_date', '>=', $startDate);
                             });
-                      });
+                    });
             })
             ->get();
 
