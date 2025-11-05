@@ -99,6 +99,7 @@ class AuthorizationService
             switch ($data['payment_type']) {
                 case 'insurance':
                     $appointmentUpdate['insurance_id'] = $data['insurance_id'];
+                    $appointmentUpdate['insurance_code'] = $data['insurance_code'];
 
                     if ($appointment->type === Appointment::TYPE_THERAPY) {
                         if (empty($data['authorization_number'])) {

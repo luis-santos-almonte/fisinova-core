@@ -21,6 +21,7 @@ use App\Http\Controllers\ProcedureStandardController;
 use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\MedicalRecordController;
 use App\Http\Controllers\TherapyController;
+use App\Services\AppointmentService;
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -92,8 +93,19 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('roles', [RoleController::class, 'index']);
     Route::get('available-employees', [UserController::class, 'availableEmployees']);
 
-     Route::get('/therapies/my-therapies', [TherapyController::class, 'getMyTherapies']);
+    Route::get('/therapies/my-therapies', [TherapyController::class, 'getMyTherapies']);
     Route::get('/therapies/{appointment}', [TherapyController::class, 'getSession']);
     Route::post('/therapies/{appointment}/start', [TherapyController::class, 'startSession']);
     Route::post('/therapies/{appointment}/complete', [TherapyController::class, 'completeSession']);
+
+    // ========== APPOINTMENTS (CITAS) ==========
+    Route::prefix('appointments')->group(function () {
+        // Rutas de disponibilidad (deben ir ANTES de las rutas de recurso)
+        Route::get('availability/{doctorId}', [AppointmentController::class, 'getDoctorAvailability']);
+        Route::post('validate-slot', [AppointmentController::class, 'validateTimeSlot']);
+        Route::get('next-available/{doctorId}', [AppointmentController::class, 'getNextAvailableSlot']);
+    });
+
+    // Rutas de recurso estándar
+    Route::apiResource('appointments', AppointmentController::class);
 });

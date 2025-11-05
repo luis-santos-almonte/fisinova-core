@@ -48,6 +48,24 @@ class EmployeeService
         return Employee::with(['user', 'position', 'schedules'])->findOrFail($id);
     }
 
+    public function getMedics()
+    {
+        return Employee::whereIn('position_id', [1]) // Médico
+            ->where('active', true)
+            ->with(['position'])
+            ->orderBy('firstname')
+            ->get();
+    }
+
+    public function getTherapists()
+    {
+        return Employee::whereIn('position_id', [2]) // Terapista
+            ->where('active', true)
+            ->with(['position'])
+            ->orderBy('firstname')
+            ->get();
+    }
+
     public function createEmployee(array $data)
     {
         return Employee::create($data);
