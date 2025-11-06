@@ -111,15 +111,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('next-available/{doctorId}', [AppointmentController::class, 'getNextAvailableSlot']);
     });
 
-<<<<<<< HEAD
     Route::post('/therapy-appointments', [TherapyAppointmentController::class, 'createTherapies']);
     Route::post('/therapy-appointments/{id}/complete', [TherapyAppointmentController::class, 'completeSession']);
 
     // Rutas de recurso estándar
     Route::apiResource('appointments', AppointmentController::class);
 
-=======
->>>>>>> main
     // ========== REPORTERÍA DE SEGUROS E IDOPPRIL ==========
     Route::prefix('reports/insurance')->group(function () {
         Route::post('/preview', [InsuranceReportController::class, 'preview']);

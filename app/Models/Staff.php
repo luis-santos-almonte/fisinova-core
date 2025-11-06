@@ -33,9 +33,9 @@ class Staff extends Model
         return $this->belongsTo(Position::class);
     }
 
-    public function staffSchedules()
+    public function employeeSchedules()
     {
-        return $this->hasMany(StaffSchedule::class);
+        return $this->hasMany(EmployeeSchedule::class);
     }
 
     public function scopeActive($query)

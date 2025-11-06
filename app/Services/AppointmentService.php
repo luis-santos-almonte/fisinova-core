@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Appointment;
+use App\Models\EmployeeSchedule;
 use App\Models\StaffSchedule;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -105,7 +106,7 @@ class AppointmentService
         $end = Carbon::parse($endDate)->endOfDay();
 
         // Obtener horarios del empleado
-        $schedules = StaffSchedule::where('staff_id', $employeeId)
+        $schedules = EmployeeSchedule::where('employee_id', $employeeId)
             ->where('status', 'active')
             ->with(['scheduleTemplate.scheduleDays', 'cubicle'])
             ->where(function ($query) use ($start, $end) {

@@ -28,9 +28,9 @@ class Cubicle extends Model
         'features' => 'array',
     ];
 
-    public function staffSchedules()
+    public function employeeSchedules()
     {
-        return $this->hasMany(StaffSchedule::class);
+        return $this->hasMany(EmployeeSchedule::class);
     }
 
     public function scopeActive($query)

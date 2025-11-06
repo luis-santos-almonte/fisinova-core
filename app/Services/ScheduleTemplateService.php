@@ -102,7 +102,9 @@ class ScheduleTemplateService
             
             // Verificar si hay asignaciones de personal usando este template
             $hasAssignments = $scheduleTemplate->scheduleDays()
-                ->whereHas('staffSchedules')
+                ->whereHas('employeeSchedules', function ($query) {
+                    $query->where('status', 'active');
+                })
                 ->exists();
 
             if ($hasAssignments) {

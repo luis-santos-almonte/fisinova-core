@@ -32,18 +32,18 @@ class EmployeeScheduleController extends Controller
         ]);
 
         $schedule = $this->scheduleService->createSchedule($validated);
-        return $this->successResponse($schedule, 'Horario asignado exitosamente', 201);
+        return $this->successResponse($schedule, 201, 'Horario asignado exitosamente'); // ✅ CORRECTO
     }
 
     public function update(Request $request, int $id)
     {
         $schedule = $this->scheduleService->updateSchedule($id, $request->all());
-        return $this->successResponse($schedule, 'Horario actualizado exitosamente');
+        return $this->successResponse($schedule, 200, 'Horario actualizado exitosamente'); // ✅ CORRECTO
     }
 
     public function destroy(int $id)
     {
         $this->scheduleService->deleteSchedule($id);
-        return $this->successResponse(null, 'Horario eliminado exitosamente');
+        return $this->successResponse(null, 200, 'Horario eliminado exitosamente'); // ✅ CORRECTO
     }
 }

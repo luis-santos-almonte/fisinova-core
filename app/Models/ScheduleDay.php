@@ -31,9 +31,9 @@ class ScheduleDay extends Model
         return $this->belongsTo(ScheduleTemplate::class);
     }
 
-    public function staffSchedules()
+    public function employeeSchedules()
     {
-        return $this->hasMany(StaffSchedule::class);
+        return $this->hasMany(EmployeeSchedule::class);
     }
 
     /**
