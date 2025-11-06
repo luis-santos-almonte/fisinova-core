@@ -24,7 +24,7 @@ class TherapyController extends Controller
         $therapies = Appointment::with(['patient', 'employee', 'authorization', 'therapyRecord'])
             ->where('employee_id', $therapistId)
             ->where('type', Appointment::TYPE_THERAPY)
-            ->whereDate('appointment_date', $date)
+            ->whereDate('confirmed_at', $date)
             ->orderBy('start_time')
             ->get();
             

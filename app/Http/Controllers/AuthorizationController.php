@@ -75,6 +75,7 @@ class AuthorizationController extends Controller
             'start_date' => 'nullable|date|after_or_equal:today',
             'notes' => 'nullable|string',
             'sessions' => 'required|array',
+            'therapist_id' => 'nullable|integer|exists:employees,id',
         ]);
 
         $authorization = $this->authorizationService->authorizeTherapySessions(
