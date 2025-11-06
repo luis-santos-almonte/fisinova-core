@@ -22,6 +22,7 @@ use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\MedicalRecordController;
 use App\Http\Controllers\TherapyController;
 use App\Http\Controllers\InsuranceReportController;
+use App\Http\Controllers\BackupController;
 
 // ========== LOGIN ==========
 Route::post('/login', [AuthController::class, 'login']);
@@ -114,4 +115,24 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/report-stats', [InsuranceReportController::class, 'reportStats']);
         Route::get('/stats-by-insurance', [InsuranceReportController::class, 'statsByInsurance']);
     });
+
+    Route::prefix('backups')->group(function () {
+    // Crear nuevo backup
+    Route::post('/', [BackupController::class, 'create']);
+    
+    // Listar backups disponibles
+    Route::get('/', [BackupController::class, 'index']);
+    
+    // Obtener estadísticas
+    Route::get('/stats', [BackupController::class, 'stats']);
+    
+    // Limpiar backups antiguos (mantener solo los últimos N)
+    Route::post('/clean', [BackupController::class, 'clean']);
+    
+    // Descargar backup específico
+    Route::get('/download/{filename}', [BackupController::class, 'download']);
+    
+    // Eliminar backup específico
+    Route::delete('/{filename}', [BackupController::class, 'destroy']);
+});
 });
