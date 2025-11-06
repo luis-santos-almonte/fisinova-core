@@ -23,6 +23,7 @@ use App\Http\Controllers\MedicalRecordController;
 use App\Http\Controllers\TherapyController;
 use App\Services\AppointmentService;
 use App\Http\Controllers\InsuranceReportController;
+use App\Http\Controllers\BackupController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -126,4 +127,24 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // Estadísticas agrupadas por seguro + IDOPPRIL
         Route::get('/stats-by-insurance', [InsuranceReportController::class, 'statsByInsurance']);
     });
+
+    Route::prefix('backups')->group(function () {
+    // Crear nuevo backup
+    Route::post('/', [BackupController::class, 'create']);
+    
+    // Listar backups disponibles
+    Route::get('/', [BackupController::class, 'index']);
+    
+    // Obtener estadísticas
+    Route::get('/stats', [BackupController::class, 'stats']);
+    
+    // Limpiar backups antiguos (mantener solo los últimos N)
+    Route::post('/clean', [BackupController::class, 'clean']);
+    
+    // Descargar backup específico
+    Route::get('/download/{filename}', [BackupController::class, 'download']);
+    
+    // Eliminar backup específico
+    Route::delete('/{filename}', [BackupController::class, 'destroy']);
+});
 });
