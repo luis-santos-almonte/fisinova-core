@@ -101,8 +101,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // ========== TERAPIAS ==========
     Route::get('/therapies/my-therapies', [TherapyController::class, 'getMyTherapies']);
     Route::get('/therapies/{appointment}', [TherapyController::class, 'getSession']);
+    Route::get('/therapies/{appointment}/consultation-info', [TherapyController::class, 'getConsultationInfo']);
     Route::post('/therapies/{appointment}/start', [TherapyController::class, 'startSession']);
     Route::post('/therapies/{appointment}/complete', [TherapyController::class, 'completeSession']);
+
 
     // ========== APPOINTMENTS (CITAS) ==========
     Route::prefix('appointments')->group(function () {

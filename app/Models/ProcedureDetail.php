@@ -16,6 +16,7 @@ class ProcedureDetail extends Model
     protected $fillable = [
         'procedure_id',
         'procedure_standard_id',
+        'description',
         'sessions_authorized',
         'sessions_completed',
         'status',

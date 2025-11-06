@@ -50,6 +50,7 @@ class MedicalRecordService
                     ProcedureDetail::create([
                         'procedure_id' => $procedure->id,
                         'procedure_standard_id' => $procStdId,
+                        'description' => '',
                         'sessions_authorized' => $sessionsPerProcedure[$procStdId] ?? 1,
                         'sessions_completed' => 0,
                         'status' => 'pending',
@@ -97,6 +98,7 @@ class MedicalRecordService
                         ProcedureDetail::create([
                             'procedure_id' => $procedure->id,
                             'procedure_standard_id' => $procStdId,
+                            'description' => '',
                             'sessions_authorized' => $sessionsPerProcedure[$procStdId] ?? 1,
                             'sessions_completed' => 0,
                             'status' => 'pending',

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Authorization\AuthorizeTherapyRequest;
 use App\Http\Requests\Authorization\IndexAuthorizationRequest;
 use App\Http\Requests\Authorization\StoreAuthorizationRequest;
 use App\Http\Requests\Authorization\UpdateAuthorizationRequest;
@@ -65,19 +66,10 @@ class AuthorizationController extends Controller
         return $this->successResponse($appointment);
     }
 
-    public function authorizeTherapy(Request $request, $appointmentId)
+    public function authorizeTherapy(AuthorizeTherapyRequest $request, $appointmentId)
     {
-        $validated = $request->validate([
-            'authorization_number' => 'required|string|max:255',
-            'authorization_date' => 'nullable|date',
-            'insurance_id' => 'required|integer|exists:insurances,id',
-            'sessions_authorized' => 'required|integer|min:1|max:50',
-            'start_date' => 'nullable|date|after_or_equal:today',
-            'notes' => 'nullable|string',
-            'sessions' => 'required|array',
-            'therapist_id' => 'nullable|integer|exists:employees,id',
-        ]);
 
+        $validated = $request->validated();
         $authorization = $this->authorizationService->authorizeTherapySessions(
             $appointmentId,
             $validated,

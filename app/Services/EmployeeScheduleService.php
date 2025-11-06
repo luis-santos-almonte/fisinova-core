@@ -22,7 +22,7 @@ class EmployeeScheduleService
         if (isset($filters['search'])) {
             $query->whereHas('employee', function ($q) use ($filters) {
                 $q->where('firstname', 'like', '%' . $filters['search'] . '%')
-                    ->orWhere('lastname', 'like', '%' . $filters['search'] . '%');
+                  ->orWhere('lastname', 'like', '%' . $filters['search'] . '%');
             });
         }
 

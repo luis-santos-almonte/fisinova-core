@@ -66,7 +66,7 @@ class MedicalRecordController extends Controller
         ]);
 
         $record = $this->medicalRecordService->createMedicalRecord($validated);
-        return $this->successResponse($record, 'Registro médico creado exitosamente', 201);
+        return $this->successResponse($record, 201, 'Registro médico creado exitosamente');
     }
 
     public function update(Request $request, int $id)
@@ -116,7 +116,7 @@ class MedicalRecordController extends Controller
         ]);
 
         $record = $this->medicalRecordService->updateMedicalRecord($id, $validated);
-        return $this->successResponse($record, 'Registro médico actualizado exitosamente');
+        return $this->successResponse($record, 200, 'Registro médico actualizado exitosamente');
     }
 
     public function getByAppointment(int $appointmentId)
