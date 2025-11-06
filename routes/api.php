@@ -19,10 +19,11 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\DiagnosticStandardController;
 use App\Http\Controllers\ProcedureStandardController;
 use App\Http\Controllers\ConsultationController;
+use App\Http\Controllers\EmployeeScheduleController;
 use App\Http\Controllers\MedicalRecordController;
 use App\Http\Controllers\TherapyController;
-use App\Services\AppointmentService;
 use App\Http\Controllers\InsuranceReportController;
+use App\Http\Controllers\TherapyAppointmentController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -57,10 +58,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // ========== GESTIÓN DE PERSONAL Y HORARIOS ==========
     Route::apiResource('staff', StaffController::class);
     Route::apiResource('schedule-templates', ScheduleTemplateController::class);
-    Route::apiResource('staff-schedules', StaffScheduleController::class);
+    Route::apiResource('employee-schedules', EmployeeScheduleController::class);
 
-    // Horario semanal de un staff
-    Route::get('staff/{staffId}/weekly-schedule', [StaffScheduleController::class, 'weeklySchedule']);
+    // Horario semanal de un empleado
+    Route::get('employees/{employeeId}/weekly-schedule', [EmployeeScheduleController::class, 'weeklySchedule']);
 
     // ========== RECURSOS AUXILIARES ==========
     Route::apiResource('cubicles', CubicleController::class)->only(['index', 'show']);
@@ -108,6 +109,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('validate-slot', [AppointmentController::class, 'validateTimeSlot']);
         Route::get('next-available/{doctorId}', [AppointmentController::class, 'getNextAvailableSlot']);
     });
+
+    Route::post('/therapy-appointments', [TherapyAppointmentController::class, 'createTherapies']);
+    Route::post('/therapy-appointments/{id}/complete', [TherapyAppointmentController::class, 'completeSession']);
 
     // Rutas de recurso estándar
     Route::apiResource('appointments', AppointmentController::class);

@@ -77,4 +77,9 @@ class MedicalRecord extends Model
     {
         return $this->belongsTo(Employee::class);
     }
+
+    public function procedure()
+    {
+        return $this->belongsTo(Procedure::class);
+    }
 }

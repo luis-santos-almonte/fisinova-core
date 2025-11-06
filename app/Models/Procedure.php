@@ -61,6 +61,11 @@ class Procedure extends Model
         return $this->hasMany(ProcedureDiagnostic::class);
     }
 
+    public function medicalRecord()
+    {
+        return $this->hasOne(MedicalRecord::class);
+    }
+
     public function scopeActive($query)
     {
         return $query->where('active', true);
