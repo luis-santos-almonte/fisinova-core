@@ -15,9 +15,10 @@ class Authorization extends Model
         'authorization_number',
         'authorization_date',
         'authorization_type',
-        'insurance_amount',      // ✅ NUEVO
-        'patient_amount',        // ✅ NUEVO
-        'total_amount',          // ✅ NUEVO
+        'payment_type',           // NUEVO
+        'insurance_amount',
+        'patient_amount',
+        'total_amount',
         'sessions_authorized',
         'sessions_completed',
         'notes',
@@ -34,14 +35,14 @@ class Authorization extends Model
         'medic_specialty',
         'diagnosis_codes',
         'services_authorized',
-        'case_number',          // Para riesgo laboral
+        'case_number',            // NUEVO - Para riesgo laboral
     ];
 
     protected $casts = [
         'authorization_date' => 'date',
-        'insurance_amount' => 'decimal:2',   // ✅ NUEVO
-        'patient_amount' => 'decimal:2',     // ✅ NUEVO
-        'total_amount' => 'decimal:2',       // ✅ NUEVO
+        'insurance_amount' => 'decimal:2',
+        'patient_amount' => 'decimal:2',
+        'total_amount' => 'decimal:2',
         'sessions_authorized' => 'integer',
         'sessions_completed' => 'integer',
         'active' => 'boolean',
@@ -81,18 +82,19 @@ class Authorization extends Model
             ->where('type', 'therapy');
     }
 
-    // ✅ NUEVO: Calcular total automáticamente
+    // ✅ Boot method para calcular total automáticamente
     public static function boot()
     {
         parent::boot();
 
         static::saving(function ($authorization) {
+            // Calcular total automáticamente
             $authorization->total_amount =
-                $authorization->insurance_amount + $authorization->patient_amount;
+                ($authorization->insurance_amount ?? 0) + ($authorization->patient_amount ?? 0);
         });
     }
 
-    // ✅ NUEVO: Scope para reportes por rango de fechas
+    // ✅ Scopes útiles
     public function scopeForReport($query, $insuranceId, $startDate, $endDate)
     {
         return $query->where('insurance_id', $insuranceId)
@@ -101,7 +103,19 @@ class Authorization extends Model
             ->with(['patient', 'insurance', 'appointment']);
     }
 
-    // ✅ NUEVO: Obtener tipo de servicio
+    public function scopeWorkplaceRisk($query)
+    {
+        return $query->where('payment_type', 'workplace_risk')
+            ->orWhereNotNull('case_number');
+    }
+
+    public function scopeInsuranceOnly($query)
+    {
+        return $query->where('payment_type', 'insurance')
+            ->whereNull('case_number');
+    }
+
+    // ✅ Accessors
     public function getServiceTypeAttribute()
     {
         if ($this->appointment) {
@@ -116,7 +130,6 @@ class Authorization extends Model
         return 'consultation';
     }
 
-    // ✅ NUEVO: Obtener descripción del procedimiento
     public function getProcedureDescriptionAttribute()
     {
         $type = $this->service_type;
@@ -128,5 +141,32 @@ class Authorization extends Model
         ];
 
         return $labels[$type] ?? 'SERVICIO';
+    }
+
+    public function isWorkplaceRisk(): bool
+    {
+        return $this->payment_type === 'workplace_risk' || !empty($this->case_number);
+    }
+
+    public function isInsurance(): bool
+    {
+        return $this->payment_type === 'insurance' && empty($this->case_number);
+    }
+
+    public function isPrivate(): bool
+    {
+        return $this->payment_type === 'private';
+    }
+
+    // ✅ Incrementar sesiones completadas (para terapias)
+    public function incrementCompletedSessions()
+    {
+        $this->increment('sessions_completed');
+        
+        // Si completó todas las sesiones, marcar como inactivo
+        if ($this->sessions_completed >= $this->sessions_authorized) {
+            $this->active = false;
+            $this->save();
+        }
     }
 }

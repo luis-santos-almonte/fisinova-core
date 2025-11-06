@@ -157,29 +157,68 @@ class AuthorizationService
             'authorization_number' => $data['authorization_number'],
             'authorization_date' => $data['authorization_date'] ?? now()->toDateString(),
             'authorization_type' => 'ambulatoria',
-
-            // ✅ AGREGAR: Montos
+            
+            // Determinar payment_type según los datos
+            'payment_type' => $this->determinePaymentType($data, $appointment),
+            
+            // Montos
             'insurance_amount' => $data['insurance_amount'] ?? 0,
             'patient_amount' => $data['patient_amount'] ?? 0,
             'total_amount' => ($data['insurance_amount'] ?? 0) + ($data['patient_amount'] ?? 0),
-
+            
             'notes' => $data['notes'] ?? null,
             'active' => true,
+            
+            // Datos del paciente
             'patient_name' => $appointment->patient->firstname,
             'patient_last_name' => $appointment->patient->lastname,
             'patient_dni' => $appointment->patient->dni,
             'patient_insurance_code' => $appointment->patient->insurance_code,
             'patient_gender' => $appointment->patient->sex,
+            
+            // Datos del establecimiento
             'PSS_code' => $appointment->insurance->provider_code ?? null,
             'city' => 'La Vega',
             'stablishment_phone' => '809-573-5555',
+            
+            // Datos del médico
             'medic_id' => $appointment->employee_id,
             'medic_name' => $appointment->employee->firstname . ' ' . $appointment->employee->lastname,
             'medic_specialty' => 'Fisiatra',
+            
             'services_authorized' => $data['services_authorized'] ?? [],
         ];
 
+        // Agregar case_number si es riesgo laboral
+        if (isset($data['case_number'])) {
+            $authData['case_number'] = $data['case_number'];
+        }
+
         return Authorization::create($authData);
+    }
+
+    /**
+     * Determinar el tipo de pago basado en los datos
+     */
+    private function determinePaymentType(array $data, Appointment $appointment): string
+    {
+        // Si tiene case_number es riesgo laboral
+        if (isset($data['case_number']) && !empty($data['case_number'])) {
+            return 'workplace_risk';
+        }
+
+        // Si el appointment tiene payment_type, usar ese
+        if ($appointment->payment_type) {
+            return $appointment->payment_type;
+        }
+
+        // Si tiene insurance_id es seguro
+        if (isset($data['insurance_id']) || $appointment->insurance_id) {
+            return 'insurance';
+        }
+
+        // Por defecto privado
+        return 'private';
     }
 
     /**
