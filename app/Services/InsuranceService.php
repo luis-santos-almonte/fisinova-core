@@ -224,8 +224,8 @@ class InsuranceService
             'appointments' => [
                 'total' => Appointment::where('insurance_id', $id)->count(),
                 'pending' => Appointment::where('insurance_id', $id)
-                    ->where('status', 'programada')
-                    ->where('appointment_date', '>=', now()->toDateString())
+                    ->whereNotIn('status', ['completada', 'cancelada'])
+                    //->where('appointment_date', '>=', now()->toDateString())
                     ->count(),
                 'completed' => Appointment::where('insurance_id', $id)
                     ->where('status', 'completada')
