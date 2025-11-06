@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\Authorization;
 use App\Models\Insurance;
+use App\Models\Appointment;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\InsuranceReportExport;
@@ -23,13 +25,22 @@ class InsuranceReportService
      */
     public function generateReport(array $filters, string $format = 'pdf')
     {
-        $reportData = $this->getReportData($filters);
+        try {
+            $reportData = $this->getReportData($filters);
 
-        if ($format === 'pdf') {
-            return $this->generatePDF($reportData);
+            if ($format === 'pdf') {
+                return $this->generatePDF($reportData);
+            }
+
+            return $this->generateExcel($reportData);
+        } catch (\Exception $e) {
+            Log::error('Error generando reporte', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'filters' => $filters
+            ]);
+            throw $e;
         }
-
-        return $this->generateExcel($reportData);
     }
 
     /**
@@ -37,7 +48,22 @@ class InsuranceReportService
      */
     public function getPreviewData(array $filters)
     {
-        return $this->getReportData($filters);
+        try {
+            $reportData = $this->getReportData($filters);
+            
+            // Convertir Collection a array para el frontend
+            if (isset($reportData['services'])) {
+                $reportData['services'] = $reportData['services']->toArray();
+            }
+            
+            return $reportData;
+        } catch (\Exception $e) {
+            Log::error('Error en getPreviewData', [
+                'error' => $e->getMessage(),
+                'filters' => $filters
+            ]);
+            throw $e;
+        }
     }
 
     /**
@@ -45,54 +71,78 @@ class InsuranceReportService
      */
     protected function getReportData(array $filters)
     {
-        $isIdoppril = isset($filters['is_idoppril']) && $filters['is_idoppril'];
+        try {
+            $isIdoppril = isset($filters['is_idoppril']) && $filters['is_idoppril'];
 
-        // Si es IDOPPRIL, buscar por payment_type
-        if ($isIdoppril) {
-            $authorizations = $this->getIdopprilAuthorizations($filters);
-            $insurance = (object)[
-                'id' => 0,
-                'name' => 'IDOPPRIL',
-                'code' => 'IDOPPRIL',
-                'provider_code' => 'IDOP001',
+            Log::info('Getting report data', [
+                'is_idoppril' => $isIdoppril,
+                'insurance_id' => $filters['insurance_id'] ?? null,
+                'dates' => [$filters['start_date'], $filters['end_date']]
+            ]);
+
+            // Si es IDOPPRIL
+            if ($isIdoppril) {
+                $authorizations = $this->getIdopprilAuthorizations($filters);
+                $insurance = (object)[
+                    'id' => 0,
+                    'name' => 'IDOPPRIL',
+                    'code' => 'IDOPPRIL',
+                    'provider_code' => 'IDOP001',
+                ];
+            } else {
+                // Buscar por insurance_id normal
+                if (empty($filters['insurance_id'])) {
+                    throw new \Exception('insurance_id es requerido cuando no es IDOPPRIL');
+                }
+                
+                $insurance = Insurance::findOrFail($filters['insurance_id']);
+                $authorizations = $this->getInsuranceAuthorizations($filters);
+            }
+
+            Log::info('Authorizations retrieved', [
+                'count' => $authorizations->count()
+            ]);
+
+            // Agrupar por paciente y ordenar servicios
+            $groupedByPatient = $this->groupAndSortByPatient($authorizations);
+
+            // Calcular totales (asegurar que sean números)
+            $summary = [
+                'total_services' => $authorizations->count(),
+                'total_insurance_amount' => (float) ($authorizations->sum('insurance_amount') ?? 0),
+                'total_patient_amount' => (float) ($authorizations->sum('patient_amount') ?? 0),
+                'total_amount' => (float) ($authorizations->sum('total_amount') ?? 0),
+                'consultations_count' => $authorizations->where('service_type', 'consultation')->count(),
+                'therapies_count' => $authorizations->where('service_type', 'therapy')->count(),
+                'admissions_count' => $authorizations->where('service_type', 'admission')->count(),
             ];
-        } else {
-            // Buscar por insurance_id normal
-            $insurance = Insurance::findOrFail($filters['insurance_id']);
-            $authorizations = $this->getInsuranceAuthorizations($filters);
+
+            Log::info('Report summary', $summary);
+
+            return [
+                'services' => $groupedByPatient,
+                'summary' => $summary,
+                'insurance' => $insurance,
+                'is_workplace_risk' => $isIdoppril,
+                'is_idoppril' => $isIdoppril,
+                'period' => [
+                    'start' => $filters['start_date'],
+                    'end' => $filters['end_date'],
+                ],
+                'company' => [
+                    'name' => self::COMPANY_NAME,
+                    'rnc' => self::COMPANY_RNC,
+                    'phone' => self::COMPANY_PHONE,
+                    'city' => self::COMPANY_CITY,
+                ],
+            ];
+        } catch (\Exception $e) {
+            Log::error('Error in getReportData', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
         }
-
-        // Agrupar por paciente y ordenar servicios
-        $groupedByPatient = $this->groupAndSortByPatient($authorizations);
-
-        // Calcular totales
-        $summary = [
-            'total_services' => $authorizations->count(),
-            'total_insurance_amount' => $authorizations->sum('insurance_amount'),
-            'total_patient_amount' => $authorizations->sum('patient_amount'),
-            'total_amount' => $authorizations->sum('total_amount'),
-            'consultations_count' => $authorizations->where('service_type', 'consultation')->count(),
-            'therapies_count' => $authorizations->where('service_type', 'therapy')->count(),
-            'admissions_count' => $authorizations->where('service_type', 'admission')->count(),
-        ];
-
-        return [
-            'services' => $groupedByPatient,
-            'summary' => $summary,
-            'insurance' => $insurance,
-            'is_workplace_risk' => $isIdoppril,
-            'is_idoppril' => $isIdoppril,
-            'period' => [
-                'start' => $filters['start_date'],
-                'end' => $filters['end_date'],
-            ],
-            'company' => [
-                'name' => self::COMPANY_NAME,
-                'rnc' => self::COMPANY_RNC,
-                'phone' => self::COMPANY_PHONE,
-                'city' => self::COMPANY_CITY,
-            ],
-        ];
     }
 
     /**
@@ -100,72 +150,75 @@ class InsuranceReportService
      */
     protected function getIdopprilAuthorizations(array $filters)
     {
-        $query = DB::table('authorizations as auth')
-            ->join('patients as p', 'auth.patient_id', '=', 'p.id')
-            ->leftJoin('appointments as app', 'auth.appointment_id', '=', 'app.id')
-            ->whereBetween('auth.authorization_date', [$filters['start_date'], $filters['end_date']])
-            ->where('auth.active', true);
-
-        // IDOPPRIL: buscar por case_number O por payment_type
-        $query->where(function ($q) {
-            $q->whereNotNull('auth.case_number')
-                ->orWhere('auth.payment_type', 'workplace_risk');
-        });
-
-        return $query->select([
-            'auth.id',
-            'auth.authorization_date',
-            'auth.authorization_number',
-            'auth.insurance_amount',
-            'auth.patient_amount',
-            'auth.total_amount',
-            'auth.patient_name',
-            'auth.patient_last_name',
-            'auth.case_number',
-            'auth.patient_id',
-            DB::raw("COALESCE(app.type, 'consultation') as service_type"),
-            DB::raw("CASE 
-            WHEN app.type = 'consultation' THEN 'CONSULTA'
-            WHEN app.type = 'therapy' THEN 'TERAPIA'
-            WHEN app.type = 'admission' THEN 'INTERNAMIENTO'
-            ELSE 'CONSULTA'
-        END as procedure_description")
-        ])
-            ->orderBy('auth.authorization_date', 'asc')
-            ->get();
+        return Authorization::whereBetween('authorization_date', [
+                $filters['start_date'],
+                $filters['end_date']
+            ])
+            ->where('active', true)
+            ->whereNotNull('case_number')
+            ->with(['patient', 'appointment'])
+            ->get()
+            ->map(function ($auth) {
+                return (object)[
+                    'id' => $auth->id,
+                    'authorization_date' => $auth->authorization_date,
+                    'authorization_number' => $auth->authorization_number,
+                    'insurance_amount' => (float) ($auth->insurance_amount ?? 0),
+                    'patient_amount' => (float) ($auth->patient_amount ?? 0),
+                    'total_amount' => (float) ($auth->total_amount ?? 0),
+                    'patient_name' => $auth->patient_name ?? $auth->patient?->firstname ?? 'N/A',
+                    'patient_last_name' => $auth->patient_last_name ?? $auth->patient?->lastname ?? '',
+                    'case_number' => $auth->case_number,
+                    'patient_id' => $auth->patient_id,
+                    'service_type' => $auth->appointment?->type ?? 'consultation',
+                    'procedure_description' => $this->getProcedureDescription($auth->appointment?->type ?? 'consultation'),
+                ];
+            });
     }
+
     /**
      * Obtener autorizaciones de un seguro normal
      */
     protected function getInsuranceAuthorizations(array $filters)
     {
-        return DB::table('authorizations as auth')
-            ->join('patients as p', 'auth.patient_id', '=', 'p.id')
-            ->leftJoin('appointments as app', 'auth.appointment_id', '=', 'app.id')
-            ->where('auth.insurance_id', $filters['insurance_id'])
-            ->whereBetween('auth.authorization_date', [$filters['start_date'], $filters['end_date']])
-            ->where('auth.active', true)
-            ->select([
-                'auth.id',
-                'auth.authorization_date',
-                'auth.authorization_number',
-                'auth.insurance_amount',
-                'auth.patient_amount',
-                'auth.total_amount',
-                'auth.patient_name',
-                'auth.patient_last_name',
-                'auth.patient_insurance_code',
-                'auth.patient_id',
-                DB::raw("COALESCE(app.type, 'consultation') as service_type"),
-                DB::raw("CASE 
-                    WHEN app.type = 'consultation' THEN 'CONSULTA'
-                    WHEN app.type = 'therapy' THEN 'TERAPIA'
-                    WHEN app.type = 'admission' THEN 'INTERNAMIENTO'
-                    ELSE 'CONSULTA'
-                END as procedure_description")
+        return Authorization::where('insurance_id', $filters['insurance_id'])
+            ->whereBetween('authorization_date', [
+                $filters['start_date'],
+                $filters['end_date']
             ])
-            ->orderBy('auth.authorization_date', 'asc')
-            ->get();
+            ->where('active', true)
+            ->with(['patient', 'appointment'])
+            ->get()
+            ->map(function ($auth) {
+                return (object)[
+                    'id' => $auth->id,
+                    'authorization_date' => $auth->authorization_date,
+                    'authorization_number' => $auth->authorization_number,
+                    'insurance_amount' => (float) ($auth->insurance_amount ?? 0),
+                    'patient_amount' => (float) ($auth->patient_amount ?? 0),
+                    'total_amount' => (float) ($auth->total_amount ?? 0),
+                    'patient_name' => $auth->patient_name ?? $auth->patient?->firstname ?? 'N/A',
+                    'patient_last_name' => $auth->patient_last_name ?? $auth->patient?->lastname ?? '',
+                    'patient_insurance_code' => $auth->patient_insurance_code ?? $auth->patient?->insurance_code ?? 'N/A',
+                    'patient_id' => $auth->patient_id,
+                    'service_type' => $auth->appointment?->type ?? 'consultation',
+                    'procedure_description' => $this->getProcedureDescription($auth->appointment?->type ?? 'consultation'),
+                ];
+            });
+    }
+
+    /**
+     * Obtener descripción del procedimiento según el tipo
+     */
+    protected function getProcedureDescription($type)
+    {
+        $descriptions = [
+            'consultation' => 'CONSULTA',
+            'therapy' => 'TERAPIA',
+            'admission' => 'INTERNAMIENTO',
+        ];
+
+        return $descriptions[$type] ?? 'CONSULTA';
     }
 
     /**
@@ -201,10 +254,20 @@ class InsuranceReportService
      */
     protected function generatePDF($reportData)
     {
-        $pdf = Pdf::loadView('reports.insurance-report', $reportData);
-        $pdf->setPaper('letter', 'portrait');
-
-        return $pdf->download($this->generateFilename($reportData, 'pdf'));
+        try {
+            $pdf = Pdf::loadView('reports.insurance-report', $reportData);
+            $pdf->setPaper('letter', 'portrait');
+            
+            $filename = $this->generateFilename($reportData, 'pdf');
+            
+            return $pdf->download($filename);
+        } catch (\Exception $e) {
+            Log::error('Error generando PDF', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw new \Exception('Error al generar el PDF: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -212,10 +275,20 @@ class InsuranceReportService
      */
     protected function generateExcel($reportData)
     {
-        return Excel::download(
-            new InsuranceReportExport($reportData),
-            $this->generateFilename($reportData, 'xlsx')
-        );
+        try {
+            $filename = $this->generateFilename($reportData, 'xlsx');
+            
+            return Excel::download(
+                new InsuranceReportExport($reportData),
+                $filename
+            );
+        } catch (\Exception $e) {
+            Log::error('Error generando Excel', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw new \Exception('Error al generar el Excel: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -224,7 +297,7 @@ class InsuranceReportService
     protected function generateFilename($reportData, $extension)
     {
         $insurance = $reportData['insurance'];
-        $insuranceName = str_replace(' ', '_', $insurance->name);
+        $insuranceName = str_replace([' ', '/'], '_', $insurance->name);
         $date = now()->format('Ymd_His');
 
         return "Reporte_{$insuranceName}_{$date}.{$extension}";
@@ -240,9 +313,9 @@ class InsuranceReportService
             ->select([
                 DB::raw('COUNT(*) as total_services'),
                 DB::raw('COUNT(DISTINCT patient_id) as total_patients'),
-                DB::raw('SUM(insurance_amount) as total_insurance_amount'),
-                DB::raw('SUM(patient_amount) as total_patient_amount'),
-                DB::raw('SUM(total_amount) as total_amount'),
+                DB::raw('COALESCE(SUM(insurance_amount), 0) as total_insurance_amount'),
+                DB::raw('COALESCE(SUM(patient_amount), 0) as total_patient_amount'),
+                DB::raw('COALESCE(SUM(total_amount), 0) as total_amount'),
             ])
             ->first();
 
@@ -268,7 +341,7 @@ class InsuranceReportService
             ->select([
                 'insurance_id',
                 DB::raw('COUNT(*) as total_services'),
-                DB::raw('SUM(total_amount) as total_amount'),
+                DB::raw('COALESCE(SUM(total_amount), 0) as total_amount'),
             ])
             ->groupBy('insurance_id')
             ->get()
@@ -286,7 +359,7 @@ class InsuranceReportService
             ->where('active', true)
             ->select([
                 DB::raw('COUNT(*) as total_services'),
-                DB::raw('SUM(total_amount) as total_amount'),
+                DB::raw('COALESCE(SUM(total_amount), 0) as total_amount'),
             ])
             ->first();
 
