@@ -24,10 +24,8 @@ class AppointmentService
 
         // Filtro de rango de fechas
         if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
-            $query->whereBetween('appointment_date', [
-                $filters['start_date'],
-                $filters['end_date']
-            ]);
+            $query->whereDate('appointment_date', '>=', $filters['start_date'])
+                ->whereDate('appointment_date', '<=', $filters['end_date']);
         }
 
         // Filtro de empleado

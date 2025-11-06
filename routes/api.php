@@ -25,6 +25,7 @@ use App\Http\Controllers\TherapyController;
 use App\Http\Controllers\InsuranceReportController;
 use App\Http\Controllers\TherapyAppointmentController;
 
+// ========== LOGIN ==========
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware(['auth:sanctum'])->group(function () {
@@ -39,8 +40,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // ========== RECURSOS PRINCIPALES ==========
     Route::apiResource('patients', PatientController::class);
-    Route::apiResource('appointments', AppointmentController::class);
     Route::apiResource('procedures', ProcedureController::class);
+    Route::apiResource('appointments', AppointmentController::class);
 
     // Confirmar llegada del paciente (SECRETARIA)
     Route::post('/appointments/{id}/confirm', [AuthorizationController::class, 'confirmAppointment']);
@@ -97,6 +98,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('roles', [RoleController::class, 'index']);
     Route::get('available-employees', [UserController::class, 'availableEmployees']);
 
+    // ========== TERAPIAS ==========
     Route::get('/therapies/my-therapies', [TherapyController::class, 'getMyTherapies']);
     Route::get('/therapies/{appointment}', [TherapyController::class, 'getSession']);
     Route::post('/therapies/{appointment}/start', [TherapyController::class, 'startSession']);
@@ -104,30 +106,25 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // ========== APPOINTMENTS (CITAS) ==========
     Route::prefix('appointments')->group(function () {
-        // Rutas de disponibilidad (deben ir ANTES de las rutas de recurso)
         Route::get('availability/{doctorId}', [AppointmentController::class, 'getDoctorAvailability']);
         Route::post('validate-slot', [AppointmentController::class, 'validateTimeSlot']);
         Route::get('next-available/{doctorId}', [AppointmentController::class, 'getNextAvailableSlot']);
     });
 
+<<<<<<< HEAD
     Route::post('/therapy-appointments', [TherapyAppointmentController::class, 'createTherapies']);
     Route::post('/therapy-appointments/{id}/complete', [TherapyAppointmentController::class, 'completeSession']);
 
     // Rutas de recurso estándar
     Route::apiResource('appointments', AppointmentController::class);
 
+=======
+>>>>>>> main
     // ========== REPORTERÍA DE SEGUROS E IDOPPRIL ==========
     Route::prefix('reports/insurance')->group(function () {
-        // Vista previa de datos (JSON)
         Route::post('/preview', [InsuranceReportController::class, 'preview']);
-
-        // Generar y descargar directamente (PDF/Excel)
         Route::post('/download', [InsuranceReportController::class, 'download']);
-
-        // Estadísticas para el módulo de reportería
         Route::get('/report-stats', [InsuranceReportController::class, 'reportStats']);
-
-        // Estadísticas agrupadas por seguro + IDOPPRIL
         Route::get('/stats-by-insurance', [InsuranceReportController::class, 'statsByInsurance']);
     });
 });
