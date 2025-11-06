@@ -205,8 +205,8 @@ class AuthorizationService
                 throw new \Exception('Solo se pueden autorizar terapias desde consultas completadas');
             }
 
-            if ($appointment->status !== 'completada') {
-                throw new \Exception('La consulta debe estar completada');
+            if ($appointment->status !== 'pendiente_autorizacion') {
+                throw new \Exception('La consulta debe estar pendiente de autorización para proceder');
             }
 
             $medicalRecord = MedicalRecord::where('appointment_id', $appointmentId)->first();
@@ -273,12 +273,8 @@ class AuthorizationService
                 $data['therapist_id'] ?? null
             );
 
-            Log::info('Terapias autorizadas con horarios específicos', [
-                'appointment_id' => $appointment->id,
-                'authorization_id' => $authorization->id,
-                'sessions' => $sessionsAuthorized,
-                'therapist_id' => $data['therapist_id'] ?? 'mismo médico',
-            ]);
+            $appointment->status = 'completada';
+            $appointment->save();
 
             return $authorization->load(['therapyAppointments']);
         });
@@ -307,11 +303,6 @@ class AuthorizationService
         $assignedTherapistId = $therapistId ?? $consultationAppointment->employee_id;
 
         foreach ($sessions as $session) {
-            // Validar que la sesión tenga los campos requeridos
-            if (empty($session['date']) || empty($session['startTime']) || empty($session['endTime'])) {
-                Log::warning('Sesión omitida por datos incompletos', ['session' => $session]);
-                continue;
-            }
 
             // Parsear fecha y horas
             $appointmentDate = Carbon::parse($session['date'])->format('Y-m-d');
@@ -320,8 +311,7 @@ class AuthorizationService
 
             // Crear cita de terapia
             $therapyAppointment = Appointment::create([
-                'employee_id' => $consultationAppointment->employee_id, // Médico referente
-                'therapist_id' => $assignedTherapistId, // Terapista asignado
+                'employee_id' => $assignedTherapistId, // Médico referente
                 'patient_id' => $consultationAppointment->patient_id,
                 'appointment_date' => $appointmentDate,
                 'start_time' => $startTime, // Hora programada
@@ -331,8 +321,8 @@ class AuthorizationService
                 'type' => Appointment::TYPE_THERAPY,
                 'payment_type' => $consultationAppointment->payment_type,
                 'insurance_id' => $consultationAppointment->insurance_id,
-                'authorization_id' => $authorization->id,
-                'authorization_number' => $authorization->authorization_number,
+                'authorization_id' => null,
+                'authorization_number' => null,
                 'session_number' => $sessionNumber,
                 'total_sessions' => $totalSessions,
                 'status' => 'programada',
@@ -342,21 +332,7 @@ class AuthorizationService
 
             $createdAppointments[] = $therapyAppointment;
             $sessionNumber++;
-
-            Log::info('Cita de terapia creada', [
-                'appointment_id' => $therapyAppointment->id,
-                'date' => $appointmentDate,
-                'time' => "$startTime - $endTime",
-                'therapist_id' => $assignedTherapistId,
-                'session' => "$sessionNumber/$totalSessions",
-            ]);
         }
-
-        Log::info('Todas las citas de terapia generadas', [
-            'authorization_id' => $authorization->id,
-            'total_sessions' => $totalSessions,
-            'appointments_created' => count($createdAppointments),
-        ]);
 
         return $createdAppointments;
     }

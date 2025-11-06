@@ -18,33 +18,11 @@ class ConfirmAppointmentRequest extends FormRequest
             'patient_id' => 'nullable|integer|exists:patients,id',
             'payment_type' => 'required|in:insurance,private,workplace_risk',
             'notes' => 'nullable|string|max:2000',
+            'authorization_number' => 'nullable|string|max:255',
+            'insurance_id' => 'nullable|integer|exists:insurances,id',
+            'insurance_code' => 'nullable|string|max:255',
+            'case_number' => 'nullable|string|max:255',
         ];
-
-        $paymentType = $this->input('payment_type');
-        $appointmentType = $this->route('appointment')?->type ?? $this->input('appointment_type');
-
-        // TERAPIA + SEGURO: requiere autorización Y montos
-        if ($paymentType === 'insurance' && $appointmentType === 'therapy') {
-            $rules['authorization_number'] = 'required|string|max:255';
-            $rules['insurance_id'] = 'required|integer|exists:insurances,id';
-            $rules['authorization_date'] = 'nullable|date';
-
-            // ✅ AGREGAR: Montos obligatorios para terapias con seguro
-            $rules['insurance_amount'] = 'required|numeric|min:0';
-            $rules['patient_amount'] = 'required|numeric|min:0';
-        } elseif ($paymentType === 'insurance') {
-            // Consulta por seguro: seguro es requerido pero NO autorización ni montos
-            $rules['insurance_id'] = 'required|integer|exists:insurances,id';
-            $rules['insurance_code'] = 'nullable|string|max:255';
-        }
-
-        // RIESGO LABORAL: requiere número de caso
-        if ($paymentType === 'workplace_risk') {
-            $rules['case_number'] = 'required|string|max:255';
-            // ✅ AGREGAR: Montos opcionales para riesgo laboral
-            $rules['insurance_amount'] = 'nullable|numeric|min:0';
-            $rules['patient_amount'] = 'nullable|numeric|min:0';
-        }
 
         return $rules;
     }

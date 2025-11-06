@@ -13,134 +13,211 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        echo "🔍 Verificando roles y positions...\n";
+        // Verificar que existan roles
+        $roles = [
+            'admin' => Role::where('name', 'admin')->first(),
+            'medic' => Role::where('name', 'medic')->first(),
+            'therapist' => Role::where('name', 'therapist')->first(),
+            'secretary' => Role::where('name', 'secretary')->first(),
+        ];
 
-        // Get roles
-        $adminRole = Role::where('name', 'admin')->first();
-        $medicRole = Role::where('name', 'medic')->first();
-        $therapistRole = Role::where('name', 'therapist')->first();
-        $secretaryRole = Role::where('name', 'secretary')->first(); // ✅ NUEVO
-
-        // Get positions
-        $adminPosition = Position::where('name', 'Administrador')->first();
-        $medicPosition = Position::where('name', 'Médico')->first();
-        $therapistPosition = Position::where('name', 'Terapista')->first();
-        $secretaryPosition = Position::where('name', 'Secretaria')->first(); // ✅ NUEVO
-
-        // Verificar que existan
-        if (!$adminRole || !$medicRole || !$therapistRole || !$secretaryRole) {
-            echo "❌ Faltan roles\n";
-            return;
-        }
-        if (!$adminPosition || !$medicPosition || !$therapistPosition || !$secretaryPosition) {
-            echo "❌ Faltan positions\n";
-            return;
+        // Verificar roles
+        foreach ($roles as $key => $role) {
+            if (!$role) {
+                $this->command->error("❌ Falta el rol: {$key}");
+                $this->command->error('Por favor ejecute: php artisan db:seed --class=RoleSeeder');
+                return;
+            }
         }
 
-        echo "✅ Todos los roles y positions encontrados\n";
+        // Verificar que existan positions
+        $positions = [
+            'admin' => Position::where('name', 'Administrador')->first(),
+            'medic' => Position::where('name', 'Médico')->first(),
+            'therapist' => Position::where('name', 'Terapista')->first(),
+            'secretary' => Position::where('name', 'Secretaria')->first(),
+        ];
 
-        // 1. ADMIN USER
-        $admin = User::updateOrCreate(
-            ['email' => 'admin@system.com'],
+        // Verificar positions
+        foreach ($positions as $key => $position) {
+            if (!$position) {
+                $this->command->error("❌ Falta la posición: {$key}");
+                $this->command->error('Por favor ejecute: php artisan db:seed --class=PositionSeeder');
+                return;
+            }
+        }
+
+        $users = [
+            // 1. ADMINISTRADOR
             [
-                'name' => 'Admin',
-                'email' => 'admin@system.com',
-                'password' => Hash::make('admin123'),
-            ]
-        );
-
-        Employee::updateOrCreate(
-            ['user_id' => $admin->id],
+                'user' => [
+                    'name' => 'Admin',
+                    'email' => 'admin@clinica.com',
+                    'password' => Hash::make('admin123'),
+                ],
+                'employee' => [
+                    'position_id' => $positions['admin']->id,
+                    'firstname' => 'Carlos',
+                    'lastname' => 'Administrador',
+                    'dni' => '00100000001',
+                    'email' => 'admin@clinica.com',
+                    'cellphone' => '809-555-0001',
+                    'phone' => '809-555-0001',
+                    'address' => 'Santo Domingo, DN',
+                    'active' => true,
+                ],
+                'roles' => ['admin'],
+            ],
+            
+            // 2. MÉDICOS
             [
-                'user_id' => $admin->id,
-                'position_id' => $adminPosition->id,
-                'firstname' => 'Administrator',
-                'lastname' => 'System',
-                'dni' => '00000000',
-                'email' => 'admin@system.com',
-                'active' => true,
-            ]
-        );
-
-        // 2. MEDIC USER
-        $medic = User::updateOrCreate(
-            ['email' => 'fulanitodoc@system.com'],
+                'user' => [
+                    'name' => 'JPEREZ',
+                    'email' => 'juan.perez@clinica.com',
+                    'password' => Hash::make('medico123'),
+                ],
+                'employee' => [
+                    'position_id' => $positions['medic']->id,
+                    'firstname' => 'Juan',
+                    'lastname' => 'Pérez García',
+                    'dni' => '00200000001',
+                    'email' => 'juan.perez@clinica.com',
+                    'cellphone' => '809-555-1001',
+                    'phone' => '809-555-1001',
+                    'address' => 'Santo Domingo, DN',
+                    'active' => true,
+                ],
+                'roles' => ['medic'],
+            ],
             [
-                'name' => 'Fulanito',
-                'email' => 'fulanitodoc@system.com',
-                'password' => Hash::make('admin123'),
-            ]
-        );
-
-        Employee::updateOrCreate(
-            ['user_id' => $medic->id],
+                'user' => [
+                    'name' => 'MLOPEZ',
+                    'email' => 'maria.lopez@clinica.com',
+                    'password' => Hash::make('medico123'),
+                ],
+                'employee' => [
+                    'position_id' => $positions['medic']->id,
+                    'firstname' => 'María',
+                    'lastname' => 'López Martínez',
+                    'dni' => '00200000002',
+                    'email' => 'maria.lopez@clinica.com',
+                    'cellphone' => '809-555-1002',
+                    'phone' => '809-555-1002',
+                    'address' => 'Santo Domingo, DN',
+                    'active' => true,
+                ],
+                'roles' => ['medic'],
+            ],
+            
+            // 3. TERAPISTAS
             [
-                'user_id' => $medic->id,
-                'position_id' => $medicPosition->id,
-                'firstname' => 'Fulanito',
-                'lastname' => 'de Tal',
-                'dni' => '04701554389',
-                'email' => 'fulanitodoc@system.com',
-                'active' => true,
-            ]
-        );
-
-        // 3. THERAPIST USER
-        $therapist = User::updateOrCreate(
-            ['email' => 'layiyi@system.com'],
+                'user' => [
+                    'name' => 'YLOPEZ',
+                    'email' => 'yesenia.lopez@clinica.com',
+                    'password' => Hash::make('terapista123'),
+                ],
+                'employee' => [
+                    'position_id' => $positions['therapist']->id,
+                    'firstname' => 'Yesenia',
+                    'lastname' => 'López Ramírez',
+                    'dni' => '40125849858',
+                    'email' => 'yesenia.lopez@clinica.com',
+                    'cellphone' => '829-555-2001',
+                    'phone' => '809-555-2001',
+                    'address' => 'Santo Domingo, DN',
+                    'active' => true,
+                ],
+                'roles' => ['therapist'],
+            ],
             [
-                'name' => 'Yesenia',
-                'email' => 'layiyi@system.com',
-                'password' => Hash::make('admin123'),
-            ]
-        );
-
-        Employee::updateOrCreate(
-            ['user_id' => $therapist->id],
+                'user' => [
+                    'name' => 'PSANCHEZ',
+                    'email' => 'pedro.sanchez@clinica.com',
+                    'password' => Hash::make('terapista123'),
+                ],
+                'employee' => [
+                    'position_id' => $positions['therapist']->id,
+                    'firstname' => 'Pedro',
+                    'lastname' => 'Sánchez Díaz',
+                    'dni' => '00300000001',
+                    'email' => 'pedro.sanchez@clinica.com',
+                    'cellphone' => '829-555-2002',
+                    'phone' => '809-555-2002',
+                    'address' => 'Santo Domingo, DN',
+                    'active' => true,
+                ],
+                'roles' => ['therapist'],
+            ],
+            
+            // 4. SECRETARIAS
             [
-                'user_id' => $therapist->id,
-                'position_id' => $therapistPosition->id,
-                'firstname' => 'Yesenia',
-                'lastname' => 'Lopez',
-                'dni' => '40125849858',
-                'email' => 'layiyi@system.com',
-                'active' => true,
-            ]
-        );
-
-        // 4. SECRETARY USER ✅ NUEVO
-        $secretary = User::updateOrCreate(
-            ['email' => 'secretary@system.com'],
+                'user' => [
+                    'name' => 'AGOMEZ',
+                    'email' => 'ana.gomez@clinica.com',
+                    'password' => Hash::make('secretaria123'),
+                ],
+                'employee' => [
+                    'position_id' => $positions['secretary']->id,
+                    'firstname' => 'Ana',
+                    'lastname' => 'Gómez Fernández',
+                    'dni' => '00400000001',
+                    'email' => 'ana.gomez@clinica.com',
+                    'cellphone' => '849-555-3001',
+                    'phone' => '809-555-3001',
+                    'address' => 'Santo Domingo, DN',
+                    'active' => true,
+                ],
+                'roles' => ['secretary'],
+            ],
             [
-                'name' => 'Maria',
-                'email' => 'secretary@system.com',
-                'password' => Hash::make('admin123'),
-            ]
-        );
+                'user' => [
+                    'name' => 'CROGRIGUEZ',
+                    'email' => 'carmen.rodriguez@clinica.com',
+                    'password' => Hash::make('secretaria123'),
+                ],
+                'employee' => [
+                    'position_id' => $positions['secretary']->id,
+                    'firstname' => 'Carmen',
+                    'lastname' => 'Rodríguez Santos',
+                    'dni' => '00400000002',
+                    'email' => 'carmen.rodriguez@clinica.com',
+                    'cellphone' => '849-555-3002',
+                    'phone' => '809-555-3002',
+                    'address' => 'Santo Domingo, DN',
+                    'active' => true,
+                ],
+                'roles' => ['secretary'],
+            ],
+        ];
 
-        Employee::updateOrCreate(
-            ['user_id' => $secretary->id],
-            [
-                'user_id' => $secretary->id,
-                'position_id' => $secretaryPosition->id,
-                'firstname' => 'Maria',
-                'lastname' => 'Gomez',
-                'dni' => '40200000001',
-                'email' => 'secretary@system.com',
-                'active' => true,
-            ]
-        );
+        foreach ($users as $userData) {
+            // Crear usuario
+            $user = User::updateOrCreate(
+                ['email' => $userData['user']['email']],
+                $userData['user']
+            );
 
-        // Assign roles
-        $admin->roles()->syncWithoutDetaching([$adminRole->id => ['active' => true]]);
-        $medic->roles()->syncWithoutDetaching([$medicRole->id => ['active' => true]]);
-        $therapist->roles()->syncWithoutDetaching([$therapistRole->id => ['active' => true]]);
-        $secretary->roles()->syncWithoutDetaching([$secretaryRole->id => ['active' => true]]); // ✅ NUEVO
+            // Crear empleado
+            $employeeData = $userData['employee'];
+            $employeeData['user_id'] = $user->id;
+            
+            Employee::updateOrCreate(
+                ['user_id' => $user->id],
+                $employeeData
+            );
 
-        echo "✅ Usuarios creados exitosamente:\n";
-        echo "   - admin@system.com (Admin)\n";
-        echo "   - fulanitodoc@system.com (Médico)\n";
-        echo "   - layiyi@system.com (Terapista)\n";
-        echo "   - secretary@system.com (Secretaria)\n"; // ✅ NUEVO
+            // Asignar roles
+            $roleIds = [];
+            foreach ($userData['roles'] as $roleName) {
+                if (isset($roles[$roleName])) {
+                    $roleIds[$roles[$roleName]->id] = ['active' => true];
+                }
+            }
+            $user->roles()->syncWithoutDetaching($roleIds);
+        }
+
+        $this->command->info('✅ Usuarios creados: 7 usuarios del sistema');
+        $this->command->info('   📧 Emails: admin@clinica.com, juan.perez@clinica.com, etc.');
+        $this->command->info('   🔑 Contraseñas: admin123, medico123, terapista123, secretaria123');
     }
 }

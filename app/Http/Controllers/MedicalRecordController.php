@@ -60,6 +60,9 @@ class MedicalRecordController extends Controller
             'prescriptions' => 'nullable|string',
             'recommendations' => 'nullable|string',
             'general_notes' => 'nullable|string',
+            'requires_therapy' => 'nullable|boolean',
+            'therapy_sessions_needed' => 'nullable|integer|min:0',
+            'therapy_reason' => 'nullable|string',
         ]);
 
         $record = $this->medicalRecordService->createMedicalRecord($validated);
@@ -105,6 +108,9 @@ class MedicalRecordController extends Controller
             'prescriptions' => 'sometimes|nullable|string',
             'recommendations' => 'sometimes|nullable|string',
             'general_notes' => 'sometimes|nullable|string',
+            'requires_therapy' => 'sometimes|nullable|boolean',
+            'therapy_sessions_needed' => 'sometimes|nullable|integer|min:0',
+            'therapy_reason' => 'sometimes|nullable|string',
 
         ]);
 
