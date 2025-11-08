@@ -43,7 +43,7 @@ class StaffService
      */
     public function getStaffById($id)
     {
-        return Employee::with(['position', 'staffSchedules.scheduleDay.scheduleTemplate', 'staffSchedules.cubicle'])
+        return Employee::with(['position', 'employeeSchedules.scheduleDay.scheduleTemplate', 'employeeSchedules.cubicle'])
             ->findOrFail($id);
     }
 

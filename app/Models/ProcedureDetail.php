@@ -15,9 +15,11 @@ class ProcedureDetail extends Model
 
     protected $fillable = [
         'procedure_id',
+        'procedure_standard_id',
         'description',
-        'notes',
-        'amount',
+        'sessions_authorized',
+        'sessions_completed',
+        'status',
         'active',
     ];
 
@@ -38,6 +40,11 @@ class ProcedureDetail extends Model
     public function procedureDiagnostics()
     {
         return $this->hasMany(ProcedureDiagnostic::class);
+    }
+
+    public function therapyAppointments()
+    {
+        return $this->hasMany(Appointment::class, 'therapist_id', 'procedure_id');
     }
 
     public function scopeActive($query)

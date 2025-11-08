@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\MedicalRecord;
 use App\Services\MedicalRecordService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
@@ -21,6 +20,7 @@ class MedicalRecordController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'sessions_per_procedure' => 'nullable|array',
             'appointment_id' => 'required|integer|exists:appointments,id',
             'patient_id' => 'required|integer|exists:patients,id',
             'employee_id' => 'required|integer|exists:employees,id',
@@ -66,12 +66,15 @@ class MedicalRecordController extends Controller
         ]);
 
         $record = $this->medicalRecordService->createMedicalRecord($validated);
-        return $this->successResponse($record, 201);
+        return $this->successResponse($record, 201, 'Registro médico creado exitosamente');
     }
 
-    public function update(Request $request, MedicalRecord $medicalRecord)
+    public function update(Request $request, int $id)
     {
         $validated = $request->validate([
+            'diagnosis_ids' => 'nullable|array',
+            'procedure_ids' => 'nullable|array',
+            'sessions_per_procedure' => 'nullable|array',
             'chief_complaint' => 'sometimes|nullable|string',
             'current_illness' => 'sometimes|nullable|string',
             'blood_pressure_systolic' => 'sometimes|nullable|numeric',
@@ -98,10 +101,8 @@ class MedicalRecordController extends Controller
             'family_history' => 'sometimes|nullable|string',
             'allergies' => 'sometimes|nullable|string',
             'physical_exam' => 'sometimes|nullable|string',
-            'diagnosis_ids' => 'sometimes|nullable|array|min:1',
             'diagnosis_ids.*' => 'nullable|integer|exists:diagnostic_standards,id',
             'diagnosis_notes' => 'sometimes|nullable|string',
-            'procedure_ids' => 'sometimes|nullable|array|min:1',
             'procedure_ids.*' => 'nullable|integer|exists:procedure_standards,id',
             'procedure_notes' => 'sometimes|nullable|string',
             'treatment_plan' => 'sometimes|nullable|string',
@@ -114,17 +115,17 @@ class MedicalRecordController extends Controller
 
         ]);
 
-        $record = $this->medicalRecordService->updateMedicalRecord($medicalRecord->id, $validated);
-        return $this->successResponse($record);
+        $record = $this->medicalRecordService->updateMedicalRecord($id, $validated);
+        return $this->successResponse($record, 200, 'Registro médico actualizado exitosamente');
     }
 
-    public function getByAppointment($appointmentId)
+    public function getByAppointment(int $appointmentId)
     {
         $record = $this->medicalRecordService->getByAppointment($appointmentId);
         return $this->successResponse($record);
     }
 
-    public function getPatientHistory($patientId)
+    public function getPatientHistory(int $patientId)
     {
         $history = $this->medicalRecordService->getPatientHistory($patientId);
         return $this->successResponse($history);

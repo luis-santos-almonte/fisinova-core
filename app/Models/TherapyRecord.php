@@ -11,31 +11,29 @@ class TherapyRecord extends Model
         'patient_id',
         'therapist_id',
         'authorization_id',
-        // Inicio
         'initial_patient_state',
         'initial_observations',
-        'started_at',
-        // Procedimientos
         'procedure_ids',
         'procedure_notes',
-        // Cierre
         'final_patient_state',
         'final_observations',
         'next_session_recommendation',
-        'ended_at',
-        // Otros
-        'duration_minutes',
         'intensity',
+        'started_at',
+        'ended_at',
+        'duration_minutes',
         'completed',
         'active',
+        'selected_procedure_detail_ids', // NUEVO - qué procedimientos se realizaron
     ];
-
+    
     protected $casts = [
         'procedure_ids' => 'array',
-        'completed' => 'boolean',
-        'active' => 'boolean',
+        'selected_procedure_detail_ids' => 'array', // NUEVO
         'started_at' => 'datetime',
         'ended_at' => 'datetime',
+        'completed' => 'boolean',
+        'active' => 'boolean',
     ];
 
     public function appointment()

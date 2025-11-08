@@ -19,9 +19,11 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\DiagnosticStandardController;
 use App\Http\Controllers\ProcedureStandardController;
 use App\Http\Controllers\ConsultationController;
+use App\Http\Controllers\EmployeeScheduleController;
 use App\Http\Controllers\MedicalRecordController;
 use App\Http\Controllers\TherapyController;
 use App\Http\Controllers\InsuranceReportController;
+use App\Http\Controllers\TherapyAppointmentController;
 use App\Http\Controllers\BackupController;
 
 // ========== LOGIN ==========
@@ -58,8 +60,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // ========== GESTIÓN DE PERSONAL Y HORARIOS ==========
     Route::apiResource('staff', StaffController::class);
     Route::apiResource('schedule-templates', ScheduleTemplateController::class);
-    Route::apiResource('staff-schedules', StaffScheduleController::class);
-    Route::get('staff/{staffId}/weekly-schedule', [StaffScheduleController::class, 'weeklySchedule']);
+    Route::apiResource('employee-schedules', EmployeeScheduleController::class);
+
+    // Horario semanal de un empleado
+    Route::get('employees/{employeeId}/weekly-schedule', [EmployeeScheduleController::class, 'weeklySchedule']);
 
     // ========== RECURSOS AUXILIARES ==========
     Route::apiResource('cubicles', CubicleController::class)->only(['index', 'show']);
@@ -98,8 +102,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // ========== TERAPIAS ==========
     Route::get('/therapies/my-therapies', [TherapyController::class, 'getMyTherapies']);
     Route::get('/therapies/{appointment}', [TherapyController::class, 'getSession']);
+    Route::get('/therapies/{appointment}/consultation-info', [TherapyController::class, 'getConsultationInfo']);
     Route::post('/therapies/{appointment}/start', [TherapyController::class, 'startSession']);
     Route::post('/therapies/{appointment}/complete', [TherapyController::class, 'completeSession']);
+
 
     // ========== APPOINTMENTS (CITAS) ==========
     Route::prefix('appointments')->group(function () {
@@ -107,6 +113,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('validate-slot', [AppointmentController::class, 'validateTimeSlot']);
         Route::get('next-available/{doctorId}', [AppointmentController::class, 'getNextAvailableSlot']);
     });
+
+    Route::post('/therapy-appointments', [TherapyAppointmentController::class, 'createTherapies']);
+    Route::post('/therapy-appointments/{id}/complete', [TherapyAppointmentController::class, 'completeSession']);
+
+    // Rutas de recurso estándar
+    Route::apiResource('appointments', AppointmentController::class);
 
     // ========== REPORTERÍA DE SEGUROS E IDOPPRIL ==========
     Route::prefix('reports/insurance')->group(function () {

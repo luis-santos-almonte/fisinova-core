@@ -230,4 +230,19 @@ class Appointment extends Model
         $end = \Carbon\Carbon::parse($this->actual_end_time);
         return $end->diffInMinutes($start);
     }
+
+    public function consultationAppointment()
+    {
+        return $this->belongsTo(Appointment::class, 'consultation_appointment_id');
+    }
+
+    public function therapyAppointments()
+    {
+        return $this->hasMany(Appointment::class, 'consultation_appointment_id');
+    }
+
+    public function procedureDetail()
+    {
+        return $this->belongsTo(ProcedureDetail::class);
+    }
 }
