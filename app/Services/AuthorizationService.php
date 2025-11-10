@@ -368,13 +368,14 @@ class AuthorizationService
                 'type' => Appointment::TYPE_THERAPY,
                 'payment_type' => $consultationAppointment->payment_type,
                 'insurance_id' => $consultationAppointment->insurance_id,
-                'authorization_id' => null,
-                'authorization_number' => null,
+                'authorization_id' => $authorization->id,
+                'authorization_number' => $authorization->authorization_number,
                 'session_number' => $sessionNumber,
                 'total_sessions' => $totalSessions,
                 'status' => 'programada',
                 'notes' => "Sesión $sessionNumber de $totalSessions - Terapia autorizada",
                 'active' => true,
+                'consultation_appointment_id' => $consultationAppointment->id,
             ]);
 
             $createdAppointments[] = $therapyAppointment;
