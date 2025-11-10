@@ -22,6 +22,10 @@ class ConfirmAppointmentRequest extends FormRequest
             'insurance_id' => 'nullable|integer|exists:insurances,id',
             'insurance_code' => 'nullable|string|max:255',
             'case_number' => 'nullable|string|max:255',
+            'appointment_type' => 'nullable|string|in:therapy,consultation',
+            'insurance_amount' => 'nullable|numeric|min:0',
+            'patient_amount' => 'nullable|numeric|min:0',
+            'total_amount' => 'nullable|numeric',
         ];
 
         return $rules;
@@ -60,6 +64,12 @@ class ConfirmAppointmentRequest extends FormRequest
                     'Las terapias por seguro requieren autorización previa'
                 );
             }
+        });
+
+        $validator->sometimes(['insurance_amount', 'patient_amount'], 'required', function ($input) {
+            // Aquí defines el AND lógico
+            return $input->payment_type === 'insurance'
+                && $input->appointment_type === 'therapy';
         });
     }
 }

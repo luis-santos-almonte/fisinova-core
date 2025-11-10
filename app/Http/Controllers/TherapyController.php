@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Appointment;
 use App\Models\TherapyRecord;
+use App\Models\Procedure;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,52 +19,43 @@ class TherapyController extends Controller
     public function getMyTherapies(Request $request)
     {
         $userId = $request->user()->employee->id ?? null;
-        
+
         if (!$userId) {
             return $this->errorResponse('Usuario sin empleado asociado', 'NO_EMPLOYEE', 400);
         }
-        
+
         $date = $request->query('date', now()->toDateString());
-        
+
+        // Obtener las terapias del día
         $therapies = Appointment::with([
             'patient',
             'employee',
-            'consultationAppointment.medicalRecord.procedure.procedureDetails.procedureStandard',
-            'consultationAppointment.medicalRecord.procedure.procedureDiagnostics.diagnostic',
-            'procedureDetail.procedureStandard',
-            'therapyRecord'
+            'therapyRecord',
+            'procedureDetail.procedureStandard'
         ])
             ->where('employee_id', $userId)
             ->where('type', Appointment::TYPE_THERAPY)
             ->whereDate('appointment_date', $date)
             ->orderBy('start_time')
             ->get();
-            
+
+        // Para cada terapia, obtener el Procedure de la consulta
+        $therapies->each(function ($therapy) {
+            if ($therapy->consultation_appointment_id) {
+                // Buscar el Procedure que pertenece a la consulta
+                $procedure = Procedure::with([
+                    'procedureDetails.procedureStandard',
+                    'procedureDiagnostics.diagnostic'
+                ])
+                    ->where('appointment_id', $therapy->consultation_appointment_id)
+                    ->first();
+
+                // Agregar como atributo dinámico
+                $therapy->consultation_procedure = $procedure;
+            }
+        });
+
         return $this->successResponse($therapies);
-    }
-
-    /**
-     * Obtener información de consulta relacionada (diagnósticos y procedimientos)
-     */
-    public function getConsultationInfo($appointmentId)
-    {
-        $appointment = Appointment::with([
-            'consultationAppointment.medicalRecord.procedure.procedureDetails.procedureStandard',
-            'consultationAppointment.medicalRecord.procedure.procedureDiagnostics.diagnostic'
-        ])->findOrFail($appointmentId);
-
-        if (!$appointment->consultationAppointment) {
-            return $this->errorResponse('Esta cita no tiene consulta asociada', 'NO_CONSULTATION', 404);
-        }
-
-        $medicalRecord = $appointment->consultationAppointment->medicalRecord;
-        $procedure = $medicalRecord?->procedure;
-
-        return $this->successResponse([
-            'diagnostics' => $procedure?->procedureDiagnostics ?? [],
-            'procedure_details' => $procedure?->procedureDetails ?? [],
-            'medical_record' => $medicalRecord,
-        ]);
     }
 
     /**
@@ -116,9 +108,6 @@ class TherapyController extends Controller
     public function completeSession(Request $request, $appointmentId)
     {
         $validated = $request->validate([
-            'selected_procedure_detail_ids' => 'required|array|min:1',
-            'selected_procedure_detail_ids.*' => 'integer|exists:procedure_details,id',
-            'procedure_notes' => 'nullable|string|max:2000',
             'final_patient_state' => 'required|string|max:500',
             'final_observations' => 'nullable|string|max:2000',
             'next_session_recommendation' => 'nullable|string|max:1000',
@@ -126,10 +115,10 @@ class TherapyController extends Controller
         ]);
 
         return DB::transaction(function () use ($appointmentId, $validated) {
-            $appointment = Appointment::with(['procedureDetail'])->findOrFail($appointmentId);
-            
+            $appointment = Appointment::with('procedureDetail')->findOrFail($appointmentId);
+
             $therapyRecord = TherapyRecord::where('appointment_id', $appointmentId)->firstOrFail();
-            
+
             if (!$therapyRecord->started_at) {
                 return $this->errorResponse('Debe iniciar la sesión primero', 'NOT_STARTED', 400);
             }
@@ -138,18 +127,18 @@ class TherapyController extends Controller
                 return $this->errorResponse('Esta sesión ya fue completada', 'ALREADY_COMPLETED', 400);
             }
 
-            // Calcular duración
-            $duration = now()->diffInMinutes($therapyRecord->started_at);
+            // Calcular duración en minutos (asegurar que sea entero positivo)
+            $startedAt = \Carbon\Carbon::parse($therapyRecord->started_at);
+            $endedAt = now();
+            $duration = abs((int) $startedAt->diffInMinutes($endedAt));
 
             // Actualizar el registro de terapia
             $therapyRecord->update([
-                'selected_procedure_detail_ids' => $validated['selected_procedure_detail_ids'],
-                'procedure_notes' => $validated['procedure_notes'] ?? null,
                 'final_patient_state' => $validated['final_patient_state'],
                 'final_observations' => $validated['final_observations'] ?? null,
                 'next_session_recommendation' => $validated['next_session_recommendation'] ?? null,
                 'intensity' => $validated['intensity'] ?? null,
-                'ended_at' => now(),
+                'ended_at' => $endedAt,
                 'duration_minutes' => $duration,
                 'completed' => true,
             ]);
@@ -157,13 +146,13 @@ class TherapyController extends Controller
             // Actualizar estado de la cita
             $appointment->update([
                 'status' => 'completada',
-                'actual_end_time' => now(),
+                'actual_end_time' => $endedAt,
             ]);
 
             // Incrementar contador en procedure_detail
             if ($appointment->procedureDetail) {
                 $appointment->procedureDetail->increment('sessions_completed');
-                
+
                 if ($appointment->procedureDetail->sessions_completed >= $appointment->procedureDetail->sessions_authorized) {
                     $appointment->procedureDetail->update(['status' => 'completed']);
                 } else {
@@ -186,12 +175,22 @@ class TherapyController extends Controller
         $appointment = Appointment::with([
             'patient',
             'employee',
-            'consultationAppointment.medicalRecord.procedure.procedureDetails.procedureStandard',
-            'consultationAppointment.medicalRecord.procedure.procedureDiagnostics.diagnostic',
-            'procedureDetail.procedureStandard',
-            'therapyRecord'
+            'therapyRecord',
+            'procedureDetail.procedureStandard'
         ])->findOrFail($appointmentId);
-            
+
+        // Obtener el Procedure de la consulta
+        if ($appointment->consultation_appointment_id) {
+            $procedure = Procedure::with([
+                'procedureDetails.procedureStandard',
+                'procedureDiagnostics.diagnostic'
+            ])
+                ->where('appointment_id', $appointment->consultation_appointment_id)
+                ->first();
+
+            $appointment->consultation_procedure = $procedure;
+        }
+
         return $this->successResponse($appointment);
     }
 }
