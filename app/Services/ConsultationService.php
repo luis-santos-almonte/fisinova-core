@@ -73,7 +73,7 @@ class ConsultationService
     {
         return DB::transaction(function () use ($appointmentId) {
             $appointment = Appointment::findOrFail($appointmentId);
-            $appointment->status = 'pendiente_autorizacion';
+            $appointment->status = 'pendiente autorizacion';
             $appointment->save();
             
             return $appointment->load(['patient', 'employee', 'insurance']);
