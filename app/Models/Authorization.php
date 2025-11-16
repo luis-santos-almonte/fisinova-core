@@ -95,6 +95,14 @@ class Authorization extends Model
     }
 
     // ✅ Scopes útiles
+
+    public function scopeWithPendingSessions($query)
+    {
+        return $query->where('active', true)
+            ->whereColumn('sessions_completed', '<', 'sessions_authorized')
+            ->where('sessions_authorized', '>', 0);
+    }
+    
     public function scopeForReport($query, $insuranceId, $startDate, $endDate)
     {
         return $query->where('insurance_id', $insuranceId)
