@@ -25,6 +25,10 @@ class PatientMedicalHistoryService
         try {
             $data = $this->getHistoryData($patientId, $options);
 
+            if ($data['medical_records']->count() === 0 && $data['therapy_sessions']->count() === 0) {
+                throw new \Exception('El paciente no tiene consultas ni sesiones de terapia registradas');
+            }
+
             if ($format === 'pdf') {
                 return $this->generatePDF($data);
             }
@@ -49,23 +53,23 @@ class PatientMedicalHistoryService
             // 1. Cargar paciente con seguro
             $patient = Patient::with(['insurance'])->findOrFail($patientId);
 
-            // 2. Obtener CONSULTAS MÉDICAS (medical_records) con relaciones completas
+            // 2. Obtener CONSULTAS MÉDICAS con relaciones
             $medicalRecords = MedicalRecord::with([
-                'appointment.employee', // Médico que atendió
-                'procedure.procedureDetails.procedureStandard', // Procedimientos realizados
-                'procedure.procedureDiagnostics.diagnostic' // Diagnósticos CIE-10
+                'appointment.employee',
+                'procedure.procedureDetails.procedureStandard',
+                'procedure.procedureDiagnostics.diagnostic'
             ])
                 ->where('patient_id', $patientId)
                 ->where('active', true)
                 ->orderBy('created_at', 'desc')
                 ->get();
 
-            // 3. Obtener SESIONES DE TERAPIA (therapy_records)
+            // 3. Obtener SESIONES DE TERAPIA
             $therapySessions = collect();
             if ($options['include_therapy_sessions'] ?? true) {
                 $therapySessions = TherapyRecord::with([
-                    'appointment', // Datos de la cita de terapia
-                    'therapist' // Terapista que realizó la sesión
+                    'appointment',
+                    'therapist'
                 ])
                     ->where('patient_id', $patientId)
                     ->where('completed', true)
@@ -77,12 +81,16 @@ class PatientMedicalHistoryService
             // 4. Calcular estadísticas
             $stats = $this->calculateStats($medicalRecords, $therapySessions);
 
+            // ✅ AGREGAR FLAG DE DATOS VACÍOS
+            $hasData = $medicalRecords->count() > 0 || $therapySessions->count() > 0;
+
             return [
                 'patient' => $patient,
                 'medical_records' => $medicalRecords,
                 'therapy_sessions' => $therapySessions,
                 'stats' => $stats,
                 'options' => $options,
+                'has_data' => $hasData, // ✅ NUEVO
                 'company' => [
                     'name' => self::COMPANY_NAME,
                     'rnc' => self::COMPANY_RNC,
@@ -106,7 +114,7 @@ class PatientMedicalHistoryService
      */
     protected function calculateStats($medicalRecords, $therapySessions)
     {
-        // Contar diagnósticos totales
+        // Contar diagnósticos totales (solo de consultas con procedure)
         $totalDiagnoses = 0;
         foreach ($medicalRecords as $record) {
             if ($record->procedure && $record->procedure->procedureDiagnostics) {

@@ -129,6 +129,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/stats-by-insurance', [InsuranceReportController::class, 'statsByInsurance']);
     });
 
+
+    Route::prefix('patients/{patient}/medical-history')->group(function () {
+        Route::get('/preview', [MedicalHistoryController::class, 'preview']);
+        Route::get('/generate', [MedicalHistoryController::class, 'generate']);
+    });
+
     Route::prefix('backups')->group(function () {
         // Crear nuevo backup
         Route::post('/', [BackupController::class, 'create']);
@@ -147,10 +153,5 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         // Eliminar backup específico
         Route::delete('/{filename}', [BackupController::class, 'destroy']);
-
-        Route::prefix('patients/{patient}/medical-history')->group(function () {
-            Route::get('/preview', [MedicalHistoryController::class, 'preview']);
-            Route::get('/generate', [MedicalHistoryController::class, 'generate']);
-        });
     });
 });
