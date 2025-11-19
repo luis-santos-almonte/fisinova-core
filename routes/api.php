@@ -25,6 +25,7 @@ use App\Http\Controllers\TherapyController;
 use App\Http\Controllers\InsuranceReportController;
 use App\Http\Controllers\TherapyAppointmentController;
 use App\Http\Controllers\BackupController;
+use App\Http\Controllers\MedicalHistoryController;
 
 // ========== LOGIN ==========
 Route::post('/login', [AuthController::class, 'login']);
@@ -128,23 +129,29 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/stats-by-insurance', [InsuranceReportController::class, 'statsByInsurance']);
     });
 
+
+    Route::prefix('patients/{patient}/medical-history')->group(function () {
+        Route::get('/preview', [MedicalHistoryController::class, 'preview']);
+        Route::get('/generate', [MedicalHistoryController::class, 'generate']);
+    });
+
     Route::prefix('backups')->group(function () {
-    // Crear nuevo backup
-    Route::post('/', [BackupController::class, 'create']);
-    
-    // Listar backups disponibles
-    Route::get('/', [BackupController::class, 'index']);
-    
-    // Obtener estadísticas
-    Route::get('/stats', [BackupController::class, 'stats']);
-    
-    // Limpiar backups antiguos (mantener solo los últimos N)
-    Route::post('/clean', [BackupController::class, 'clean']);
-    
-    // Descargar backup específico
-    Route::get('/download/{filename}', [BackupController::class, 'download']);
-    
-    // Eliminar backup específico
-    Route::delete('/{filename}', [BackupController::class, 'destroy']);
-});
+        // Crear nuevo backup
+        Route::post('/', [BackupController::class, 'create']);
+
+        // Listar backups disponibles
+        Route::get('/', [BackupController::class, 'index']);
+
+        // Obtener estadísticas
+        Route::get('/stats', [BackupController::class, 'stats']);
+
+        // Limpiar backups antiguos (mantener solo los últimos N)
+        Route::post('/clean', [BackupController::class, 'clean']);
+
+        // Descargar backup específico
+        Route::get('/download/{filename}', [BackupController::class, 'download']);
+
+        // Eliminar backup específico
+        Route::delete('/{filename}', [BackupController::class, 'destroy']);
+    });
 });
