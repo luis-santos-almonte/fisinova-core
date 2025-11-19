@@ -33,10 +33,10 @@ class MedicalHistoryController extends Controller
 
             $format = $validated['format'] ?? 'pdf';
             $options = [
-                'include_vital_signs' => $validated['include_vital_signs'] ?? true,
-                'include_medical_history' => $validated['include_medical_history'] ?? true,
-                'include_prescriptions' => $validated['include_prescriptions'] ?? true,
-                'include_therapy_sessions' => $validated['include_therapy_sessions'] ?? true,
+                'include_vital_signs' => filter_var($request->input('include_vital_signs', true), FILTER_VALIDATE_BOOLEAN),
+                'include_medical_history' => filter_var($request->input('include_medical_history', true), FILTER_VALIDATE_BOOLEAN),
+                'include_prescriptions' => filter_var($request->input('include_prescriptions', true), FILTER_VALIDATE_BOOLEAN),
+                'include_therapy_sessions' => filter_var($request->input('include_therapy_sessions', true), FILTER_VALIDATE_BOOLEAN),
             ];
 
             return $this->medicalHistoryService->generateMedicalHistory(
