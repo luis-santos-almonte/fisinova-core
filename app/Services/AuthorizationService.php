@@ -268,7 +268,6 @@ class AuthorizationService
                 throw new \Exception('Debe autorizar al menos una sesión');
             }
 
-            // Validar que se hayan proporcionado las sesiones programadas
             if (empty($data['sessions']) || !is_array($data['sessions'])) {
                 throw new \Exception('Debe proporcionar las sesiones programadas');
             }
@@ -277,22 +276,29 @@ class AuthorizationService
                 throw new \Exception('El número de sesiones programadas no coincide con las sesiones autorizadas');
             }
 
+            // ✅ NUEVO: Detectar si es consulta privada
+            $isPrivate = $appointment->payment_type === 'private';
+            $authorizationNumber = $data['authorization_number'] ?? null;
+
             // Crear autorización
             $authData = [
                 'appointment_id' => $appointment->id,
                 'patient_id' => $appointment->patient_id,
-                'insurance_id' => $data['insurance_id'] ?? $appointment->insurance_id,
+                // ✅ MODIFICADO: Si es privada, insurance_id puede ser null
+                'insurance_id' => $isPrivate ? null : ($data['insurance_id'] ?? $appointment->insurance_id),
                 'created_by' => $userId,
                 'medic_id' => $appointment->employee_id,
-                'authorization_number' => $data['authorization_number'],
+                'authorization_number' => $authorizationNumber,
                 'authorization_date' => $data['authorization_date'] ?? now()->toDateString(),
                 'authorization_type' => 'ambulatoria',
-
-                // ✅ AGREGAR: Montos
-                'insurance_amount' => $data['insurance_amount'] ?? 0,
+                // ✅ NUEVO: Determinar payment_type
+                'payment_type' => $appointment->payment_type,
+                // ✅ MODIFICADO: Montos según tipo
+                'insurance_amount' => $isPrivate ? 0 : ($data['insurance_amount'] ?? 0),
                 'patient_amount' => $data['patient_amount'] ?? 0,
-                'total_amount' => ($data['insurance_amount'] ?? 0) + ($data['patient_amount'] ?? 0),
-
+                'total_amount' => $isPrivate
+                    ? ($data['patient_amount'] ?? 0)
+                    : (($data['insurance_amount'] ?? 0) + ($data['patient_amount'] ?? 0)),
                 'sessions_authorized' => $sessionsAuthorized,
                 'sessions_completed' => 0,
                 'notes' => $data['notes'] ?? $medicalRecord->therapy_reason,
@@ -303,7 +309,8 @@ class AuthorizationService
                 'patient_insurance_code' => $appointment->patient->insurance_code,
                 'patient_gender' => $appointment->patient->sex,
                 'city' => 'La Vega',
-                'PSS_code' => $appointment->insurance->provider_code ?? null,
+                // ✅ MODIFICADO: PSS_code solo si tiene seguro
+                'PSS_code' => $isPrivate ? null : ($appointment->insurance->provider_code ?? null),
                 'stablishment_phone' => '809-573-5555',
                 'medic_name' => $appointment->employee->firstname . ' ' . $appointment->employee->lastname,
                 'medic_specialty' => 'Fisiatra',
@@ -312,7 +319,7 @@ class AuthorizationService
 
             $authorization = Authorization::create($authData);
 
-            // Generar citas de terapia con horarios específicos
+            // Generar citas de terapia
             $this->generateTherapyAppointmentsWithSchedule(
                 $appointment,
                 $authorization,
@@ -320,8 +327,11 @@ class AuthorizationService
                 $data['therapist_id'] ?? null
             );
 
+            // Marcar consulta como completada
             $appointment->status = 'completada';
             $appointment->save();
+
+            Log::info('Terapias programadas y consulta completada');
 
             return $authorization->load(['therapyAppointments']);
         });
