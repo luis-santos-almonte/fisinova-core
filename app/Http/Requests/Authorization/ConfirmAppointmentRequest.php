@@ -56,7 +56,7 @@ class ConfirmAppointmentRequest extends FormRequest
             // Validar que terapia por seguro siempre tenga autorización
             if (
                 $appointmentType === 'therapy' &&
-                $paymentType === 'insurance' &&
+                ($paymentType === 'insurance' || $paymentType === 'workplace_risk') &&
                 !$this->input('authorization_number')
             ) {
                 $validator->errors()->add(

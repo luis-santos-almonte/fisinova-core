@@ -86,8 +86,9 @@ class AuthorizationService
                 ->findOrFail($appointmentId);
 
             $appointmentUpdate = [
-                'payment_type' => $data['payment_type'],
                 'status' => 'confirmada',
+                'payment_type' => $data['payment_type'],
+                'notes' => $data['notes'] ?? null,
                 'confirmed_at' => now(),
                 'confirmed_by' => $userId,
             ];
@@ -113,6 +114,10 @@ class AuthorizationService
                     if (empty($data['case_number'])) {
                         throw new \Exception('El número de caso es requerido para riesgo laboral');
                     }
+                    if (empty($data['authorization_number'])) {
+                        throw new \Exception('Las terapias por riesgo laboral requieren autorización previa');
+                    }
+                    $appointmentUpdate['authorization_number'] = $data['authorization_number'];
                     $appointmentUpdate['case_number'] = $data['case_number'];
                     break;
 
@@ -128,20 +133,15 @@ class AuthorizationService
                 throw new \Exception('No se puede confirmar una cita sin un paciente asignado');
             }
 
-            if (
-                $appointment->type === Appointment::TYPE_THERAPY &&
-                $data['payment_type'] === 'insurance' &&
-                !empty($data['authorization_number'])
-            ) {
-                $this->createAuthorizationRecord($appointment, $data, $userId);
+            if ($appointment->type === Appointment::TYPE_THERAPY) {
+                if ($data['payment_type'] === 'insurance' && !empty($data['authorization_number'])) {
+                    $this->createAuthorizationRecord($appointment, $data, $userId);
+                } elseif ($data['payment_type'] === 'private') {
+                    $this->createAuthorizationRecord($appointment, $data, $userId);
+                } elseif ($data['payment_type'] === 'workplace_risk' && !empty($data['authorization_number'])) {
+                    $this->createAuthorizationRecord($appointment, $data, $userId);
+                }
             }
-
-            Log::info('Cita confirmada', [
-                'appointment_id' => $appointment->id,
-                'type' => $appointment->type,
-                'payment_type' => $appointment->payment_type,
-                'patient_id' => $appointment->patient_id,
-            ]);
 
             return $appointment->load(['patient', 'employee', 'insurance', 'authorizations']);
         });
@@ -155,12 +155,16 @@ class AuthorizationService
                 ->find($appointment->consultation_appointment_id);
         }
 
+        $isPrivate = $appointment->payment_type === 'private';
+        $isWorkplaceRisk = $appointment->payment_type === 'workplace_risk';
+        $authorizationNumber = $isPrivate ? null : ($data['authorization_number'] ?? null);
+
         $authData = [
             'appointment_id' => $appointment->id,
             'patient_id' => $appointment->patient_id,
             'insurance_id' => $data['insurance_id'] ?? $appointment->insurance_id,
             'created_by' => $userId,
-            'authorization_number' => $data['authorization_number'],
+            'authorization_number' => $authorizationNumber,
             'authorization_date' => $data['authorization_date'] ?? now()->toDateString(),
             'authorization_type' => 'ambulatoria',
 
@@ -197,9 +201,22 @@ class AuthorizationService
             'services_authorized' => $data['services_authorized'] ?? [],
         ];
 
-        // Agregar case_number si es riesgo laboral
-        if (isset($data['case_number'])) {
+        if ($isPrivate) {
+            // TERAPIA PRIVADA: Sin authorization_number, sin seguro, solo patient_amount
+            $authData['authorization_number'] = null;
+            $authData['insurance_id'] = null;
+            $authData['PSS_code'] = null;
+        } elseif ($isWorkplaceRisk) {
+            // TERAPIA RIESGO LABORAL: Con authorization_number y case_number
+            $authData['authorization_number'] = $data['authorization_number'];
             $authData['case_number'] = $data['case_number'];
+            $authData['insurance_id'] = null;
+            $authData['PSS_code'] = '25943';
+        } else {
+            // TERAPIA CON SEGURO: Con authorization_number, seguro, y distribución de montos
+            $authData['authorization_number'] = $data['authorization_number'];
+            $authData['insurance_id'] = $data['insurance_id'] ?? $appointment->insurance_id;
+            $authData['PSS_code'] = $appointment->insurance->provider_code ?? null;
         }
 
         return Authorization::create($authData);

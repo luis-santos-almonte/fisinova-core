@@ -35,7 +35,7 @@ class TherapyController extends Controller
         ])
             ->where('employee_id', $userId)
             ->where('type', Appointment::TYPE_THERAPY)
-            ->whereDate('appointment_date', $date)
+            ->whereRaw("DATE(COALESCE(confirmed_at, appointment_date)) = ?", [$date])
             ->orderBy('start_time')
             ->get();
 
