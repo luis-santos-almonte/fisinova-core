@@ -47,6 +47,7 @@ class MedicalRecord extends Model
         'requires_therapy',
         'therapy_sessions_needed',
         'therapy_reason',
+        'sessions_per_procedure',
         'active',
     ];
 
@@ -61,6 +62,7 @@ class MedicalRecord extends Model
         'diagnosis_ids' => 'array',
         'procedure_ids' => 'array',
         'requires_therapy' => 'boolean',
+        'sessions_per_procedure' => 'array',
     ];
 
     public function appointment()

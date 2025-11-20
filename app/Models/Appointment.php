@@ -43,6 +43,8 @@ class Appointment extends Model
         'authorization_id',
         'session_number',
         'total_sessions',
+        'consultation_appointment_id', // ✅ Relación con consulta padre
+        'procedure_detail_id'
     ];
 
     protected $casts = [
@@ -84,6 +86,11 @@ class Appointment extends Model
     public function medicalRecords()
     {
         return $this->hasMany(MedicalRecord::class);
+    }
+
+    public function medicalRecord()
+    {
+        return $this->hasOne(MedicalRecord::class);
     }
 
     public function authorizations()
