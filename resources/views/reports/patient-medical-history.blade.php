@@ -1,3 +1,8 @@
+// ============================================================================
+// ARCHIVO: resources/views/reports/patient-medical-history.blade.php
+// ACCIÓN: MODIFICACIÓN - Buscar Procedure desde appointment_id igual que terapias
+// ============================================================================
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -215,7 +220,7 @@
         <div class="subtitle">{{ $company['name'] }}</div>
     </div>
 
-    <!-- ✅ DATOS DEL PACIENTE - FORMATO FORMULARIO HORIZONTAL -->
+    <!-- ✅ DATOS DEL PACIENTE - CON CIUDAD Y DIRECCIÓN, SIN SEGURO -->
     <div class="patient-info">
         <h2>DATOS DEL PACIENTE</h2>
         
@@ -247,7 +252,7 @@
             </div>
             <div class="form-field flex-1">
                 <span class="field-label">Sexo:</span>
-                <span class="field-value">{{ $patient->sex === 'M' ? 'Masculino' : ($patient->sex === 'F' ? 'Femenino' : 'N/A') }}</span>
+                <span class="field-value">{{ $patient->sex === 'male' ? 'Masculino' : ($patient->sex === 'female' ? 'Femenino' : 'N/A') }}</span>
             </div>
         </div>
         
@@ -263,21 +268,7 @@
             </div>
         </div>
         
-        <!-- Fila 4: Seguro, No. Afiliado -->
-        @if($patient->insurance)
-        <div class="form-row">
-            <div class="form-field flex-2">
-                <span class="field-label">Seguro Médico:</span>
-                <span class="field-value">{{ $patient->insurance->name }}</span>
-            </div>
-            <div class="form-field flex-1">
-                <span class="field-label">No. de Afiliado:</span>
-                <span class="field-value">{{ $patient->insurance_code ?? 'N/A' }}</span>
-            </div>
-        </div>
-        @endif
-        
-        <!-- Fila 5: Ciudad, Dirección -->
+        <!-- Fila 4: Ciudad, Dirección -->
         <div class="form-row">
             <div class="form-field flex-1">
                 <span class="field-label">Ciudad:</span>
@@ -290,7 +281,7 @@
         </div>
     </div>
 
-    <!-- ✅ ESTADÍSTICAS SIN DIAGNÓSTICOS -->
+    <!-- ✅ ESTADÍSTICAS -->
     <div class="stats-section">
         <div class="stat-card">
             <div class="stat-number">{{ $stats['total_consultations'] }}</div>
@@ -377,7 +368,7 @@
     </div>
     @endif
 
-    <!-- ✅ HISTORIAL DE CONSULTAS MÉDICAS - TABLA -->
+    <!-- ✅ HISTORIAL DE CONSULTAS - IGUAL QUE TERAPIAS, BUSCAR PROCEDURE DESDE APPOINTMENT -->
     @if($medical_records->count() > 0)
     <div class="section-title">HISTORIAL DE CONSULTAS MÉDICAS</div>
     <table>
@@ -400,9 +391,14 @@
                 </td>
                 <td>{{ $record->chief_complaint ?? 'N/A' }}</td>
                 <td>
-                    {{-- ✅ TODOS LOS DIAGNÓSTICOS --}}
-                    @if($record->procedure && $record->procedure->procedureDiagnostics->count() > 0)
-                        @foreach($record->procedure->procedureDiagnostics as $diag)
+                    {{-- ✅ BUSCAR PROCEDURE DESDE APPOINTMENT_ID (IGUAL QUE TERAPIAS) --}}
+                    @php
+                        $consultationProcedure = \App\Models\Procedure::with('procedureDiagnostics.diagnostic')
+                            ->where('appointment_id', $record->appointment_id)
+                            ->first();
+                    @endphp
+                    @if($consultationProcedure && $consultationProcedure->procedureDiagnostics->count() > 0)
+                        @foreach($consultationProcedure->procedureDiagnostics as $diag)
                             <div style="margin-bottom: 3px;">
                                 <strong>{{ $diag->diagnostic->code ?? '' }}</strong> - {{ $diag->diagnostic->description ?? '' }}
                             </div>
@@ -412,9 +408,9 @@
                     @endif
                 </td>
                 <td>
-                    {{-- ✅ TODOS LOS PROCEDIMIENTOS --}}
-                    @if($record->procedure && $record->procedure->procedureDetails->count() > 0)
-                        @foreach($record->procedure->procedureDetails as $detail)
+                    {{-- ✅ BUSCAR PROCEDIMIENTOS DESDE APPOINTMENT_ID (IGUAL QUE TERAPIAS) --}}
+                    @if($consultationProcedure && $consultationProcedure->procedureDetails->count() > 0)
+                        @foreach($consultationProcedure->procedureDetails as $detail)
                             <div style="margin-bottom: 3px;">
                                 <strong>{{ $detail->procedureStandard->code ?? '' }}</strong> - {{ $detail->procedureStandard->description ?? '' }}
                                 @if($detail->sessions_authorized > 1)
@@ -432,7 +428,7 @@
     </table>
     @endif
 
-    <!-- ✅ HISTORIAL DE TERAPIAS - TABLA CON SALTO DE PÁGINA -->
+    <!-- ✅ HISTORIAL DE TERAPIAS - SIN CAMBIOS -->
     @if($options['include_therapy_sessions'] ?? true)
         @if($therapy_sessions->count() > 0)
         <div class="therapy-section">
